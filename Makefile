@@ -1,5 +1,9 @@
 all:
-	gcc -o test test.c smatgraph.c
+	gcc -c smatgraph.c
+	gcc -o test test.c smatgraph.o
+	gcc -o smatpr smatpr.c smatgraph.o
 
 clean:
-	rm test
+	rm -f smatgraph.o
+	rm -f test
+	rm -f smatpr
