@@ -31,3 +31,36 @@ int initialize(graph *g, char *filename)
 
     return 0;
 }
+
+int nextedge(graph *g, edge *e)
+{
+    if (g->stream == NULL)
+    {
+        return 1;
+    }
+
+    char buff[BUFFSIZE];
+    
+    if (feof(g->stream))
+    {
+        return 1;
+    }
+    fscanf(g->stream, "%s", buff);
+    e->src = strtoull(buff, NULL, 0);
+    
+    if (feof(g->stream))
+    {
+        return 1;
+    }
+    fscanf(g->stream, "%s", buff);
+    e->dest = strtoull(buff, NULL, 0);
+
+    if (feof(g->stream))
+    {
+        return 1;
+    }
+    fscanf(g->stream, "%s", buff);
+    e->weight = atoi(buff);
+    
+    return 0;
+}
