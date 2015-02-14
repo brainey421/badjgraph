@@ -31,4 +31,5 @@ typedef struct graph graph;
 typedef struct edge edge;
 
 int initialize(graph *g, char *filename);   // initialize graph
-int nextedge(graph *g, edge *e);                   // get next edge
+int nextedge(graph *g, edge *e);            // get next edge
+int rewindedges(graph *g);                  // rewind edge file pointer

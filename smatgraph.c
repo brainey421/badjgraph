@@ -64,3 +64,26 @@ int nextedge(graph *g, edge *e)
     
     return 0;
 }
+
+int rewindedges(graph *g)
+{
+    if (g->stream == NULL)
+    {
+        return 1;
+    }
+
+    fseek(g->stream, 0, SEEK_SET);
+
+    char buff[BUFFSIZE];
+
+    fscanf(g->stream, "%s", buff);
+    fscanf(g->stream, "%s", buff);
+    fscanf(g->stream, "%s", buff);
+
+    if (!strtoull(buff, NULL, 0))
+    {
+        return 1;
+    }
+
+    return 0;
+}
