@@ -1,6 +1,6 @@
 #include "smatgraph.h"
 
-int initialize(graph *g, char *filename)
+int initialize(graph *g, char *filename, char format)
 {
     if (strlen(filename) > FILENAMELEN)
     {
@@ -15,18 +15,29 @@ int initialize(graph *g, char *filename)
         return 1;
     }
     
-    char buff[BUFFSIZE];
-    
-    fscanf(g->stream, "%s", buff);
-    fscanf(g->stream, "%s", buff);
-    g->n = strtoull(buff, NULL, 0);
-    
-    fscanf(g->stream, "%s", buff);
-    g->m = strtoull(buff, NULL, 0);
+    g->format = format;
 
-    if (g->n == 0 || g->m == 0)
+    if (g->format == SMAT)
     {
-        return 1;
+        char buff[BUFFSIZE];
+    
+        fscanf(g->stream, "%s", buff);
+        fscanf(g->stream, "%s", buff);
+        g->n = strtoull(buff, NULL, 0);
+    
+        fscanf(g->stream, "%s", buff);
+        g->m = strtoull(buff, NULL, 0);
+    }
+    else
+    {
+        int n, m;
+
+        fread(&n, sizeof(int), 1, g->stream);
+        fread(&n, sizeof(int), 1, g->stream);
+        fread(&m, sizeof(int), 1, g->stream);
+
+        g->n = (unsigned long long) n;
+        g->m = (unsigned long long) m;
     }
 
     return 0;
@@ -34,55 +45,53 @@ int initialize(graph *g, char *filename)
 
 int nextedge(graph *g, edge *e)
 {
-    if (g->stream == NULL)
+    if (feof(g->stream))
     {
         return 1;
+    }
+   
+    if (g->format == SMAT)
+    {
+        char buff[BUFFSIZE];
+    
+        fscanf(g->stream, "%s", buff);
+        e->src = strtoull(buff, NULL, 0);
+    
+        fscanf(g->stream, "%s", buff);
+        e->dest = strtoull(buff, NULL, 0);
+
+        fscanf(g->stream, "%s", buff);
+        e->weight = atoi(buff);
+    }
+    else
+    {
+        double weight;
+
+        fread(&e->src, sizeof(unsigned long long), 1, g->stream);
+        fread(&e->dest, sizeof(unsigned long long), 1, g->stream);
+        fread(&weight, sizeof(double), 1, g->stream);
+
+        e->weight = 1;
     }
 
-    char buff[BUFFSIZE];
-    
-    if (feof(g->stream))
-    {
-        return 1;
-    }
-    fscanf(g->stream, "%s", buff);
-    e->src = strtoull(buff, NULL, 0);
-    
-    if (feof(g->stream))
-    {
-        return 1;
-    }
-    fscanf(g->stream, "%s", buff);
-    e->dest = strtoull(buff, NULL, 0);
-
-    if (feof(g->stream))
-    {
-        return 1;
-    }
-    fscanf(g->stream, "%s", buff);
-    e->weight = atoi(buff);
-    
     return 0;
 }
 
 int rewindedges(graph *g)
 {
-    if (g->stream == NULL)
+    if (g->format == SMAT)
     {
-        return 1;
+        fseek(g->stream, 0, SEEK_SET);
+        
+        char buff[BUFFSIZE];
+
+        fscanf(g->stream, "%s", buff);
+        fscanf(g->stream, "%s", buff);
+        fscanf(g->stream, "%s", buff);
     }
-
-    fseek(g->stream, 0, SEEK_SET);
-
-    char buff[BUFFSIZE];
-
-    fscanf(g->stream, "%s", buff);
-    fscanf(g->stream, "%s", buff);
-    fscanf(g->stream, "%s", buff);
-
-    if (!strtoull(buff, NULL, 0))
+    else
     {
-        return 1;
+        fseek(g->stream, 3*sizeof(int), SEEK_SET);
     }
 
     return 0;

@@ -13,7 +13,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
 int main()
 {
     graph g;
-    initialize(&g, "/media/drive/graphs/cnr-2000.smat");
+    initialize(&g, "/media/drive/graphs/cnr-2000.bsmat", BSMAT);
 
     fprintf(stderr, "Nodes: %llu\n", g.n);
     fprintf(stderr, "Edges: %llu\n\n", g.m);
