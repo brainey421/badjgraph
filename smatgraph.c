@@ -77,6 +77,11 @@ int nextedge(graph *g, edge *e)
     return 0;
 }
 
+int nextnode(graph *g, node *v)
+{
+    return 0;
+}
+
 int rewindedges(graph *g)
 {
     if (g->format == SMAT)

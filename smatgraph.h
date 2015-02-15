@@ -31,9 +31,20 @@ struct edge
     unsigned int weight;        // edge weight
 };
 
+/*
+ * Node
+ */
+struct node
+{
+    unsigned long long deg;     // out-degree
+    unsigned long long *adj;    // adjacent nodes
+};
+
 typedef struct graph graph;
 typedef struct edge edge;
+typedef struct node node;
 
 int initialize(graph *g, char *filename, char format);  // initialize graph
 int nextedge(graph *g, edge *e);                        // get next edge
+int nextnode(graph *g, node *v);                        // get next node
 int rewindedges(graph *g);                              // rewind edge file pointer

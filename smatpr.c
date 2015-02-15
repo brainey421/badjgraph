@@ -32,5 +32,7 @@ int main()
 
     power(&g, alpha, tol, maxit, x);
     
+    free(x);
+
     return 0;
 }
