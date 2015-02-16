@@ -46,5 +46,5 @@ typedef struct node node;
 
 int initialize(graph *g, char *filename, char format);  // initialize graph
 int nextedge(graph *g, edge *e);                        // get next edge
-int nextnode(graph *g, node *v);                        // get next node
+int nextnode(graph *g, node *v, unsigned long long i);  // get next node; must call free(v->adj) after
 int rewindedges(graph *g);                              // rewind edge file pointer

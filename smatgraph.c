@@ -77,8 +77,41 @@ int nextedge(graph *g, edge *e)
     return 0;
 }
 
-int nextnode(graph *g, node *v)
+int nextnode(graph *g, node *v, unsigned long long i)
 {
+    unsigned long long size = 64;
+
+    v->deg = 0;
+    v->adj = malloc(size*sizeof(unsigned long long));
+
+    edge e;
+
+    while (!nextedge(g, &e))
+    {
+        if (e.src != i)
+        {
+            break;
+        }
+        
+        if (v->deg == size)
+        {
+            size = 2*size;
+            unsigned long long *tmp = malloc(size*sizeof(unsigned long long));
+            unsigned long long j;
+            for (j = 0; j < size / 2; j++)
+            {
+                tmp[j] = v->adj[j];
+            }
+            free(v->adj);
+            v->adj = tmp;
+        }
+
+        v->adj[v->deg] = e.dest;
+        v->deg++;
+    }
+
+    fseek(g->stream, -1*(2*sizeof(unsigned long long) + sizeof(double)), SEEK_CUR);
+
     return 0;
 }
 
