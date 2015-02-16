@@ -7,6 +7,7 @@
 
 #define SMAT        0
 #define BSMAT       1
+#define BADJ        2
 
 /*
  * Graph in SMAT/BSMAT format

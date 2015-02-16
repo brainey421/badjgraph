@@ -1,4 +1,4 @@
-#include "smatgraph.h"
+#include "graph.h"
 
 int iterate(graph *g, double alpha, double *x, double *y)
 {

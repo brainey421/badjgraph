@@ -1,9 +1,15 @@
-all:
-	gcc -c smatgraph.c
-	gcc -o test test.c smatgraph.o
-	gcc -o smatpr smatpr.c smatgraph.o
+all: pagerank test
+
+pagerank: pagerank.c graph.o
+	gcc -o pagerank pagerank.c graph.o
+
+test: test.c graph.o
+	gcc -o test test.c graph.o
+
+graph.o: graph.c
+	gcc -c graph.c
 
 clean:
-	rm -f smatgraph.o
+	rm -f graph.o
 	rm -f test
-	rm -f smatpr
+	rm -f pagerank

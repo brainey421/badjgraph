@@ -1,4 +1,4 @@
-#include "smatgraph.h"
+#include "graph.h"
 
 int initialize(graph *g, char *filename, char format)
 {
