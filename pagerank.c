@@ -78,7 +78,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
             }
         }
 
-        fprintf(stderr, "After %d iterations: %f\n", iter, norm);
+        fprintf(stderr, "After %d iterations: %e\n", iter, norm);
 
         if (norm < tol)
         {
@@ -94,7 +94,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
 int main()
 {
     graph g;
-    initialize(&g, "/media/drive/graphs/cnr-2000.bsmat", BSMAT);
+    initialize(&g, "/media/drive/graphs/cnr-2000.badj", BADJ);
 
     fprintf(stderr, "Nodes: %llu\n", g.n);
     fprintf(stderr, "Edges: %llu\n\n", g.m);
@@ -116,7 +116,7 @@ int main()
     fprintf(stderr, "\n");
     for (i = 0; i < 10; i++)
     {
-        fprintf(stderr, "PageRank vector: %f\n", x[i]);
+        fprintf(stderr, "PageRank vector: %e\n", x[i]);
     }
 
     free(x);
