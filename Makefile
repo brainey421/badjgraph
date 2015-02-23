@@ -6,7 +6,7 @@ pagerank: pagerank.c graph.o
 test: test.c graph.o
 	gcc -o test test.c graph.o
 
-graph.o: graph.c
+graph.o: graph.c graph.h
 	gcc -c graph.c
 
 clean:
