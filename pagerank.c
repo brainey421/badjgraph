@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    char format = BADJ;
+    char format;
     if (!strcmp(argv[2], "bsmat"))
     {
         format = BSMAT;
