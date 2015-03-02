@@ -4,6 +4,7 @@ int initialize(graph *g, char *filename, char format)
 {
     if (strlen(filename) > FILENAMELEN)
     {
+        fprintf(stderr, "Max file name length exceeded.\n");
         return 1;
     }
 
@@ -12,6 +13,7 @@ int initialize(graph *g, char *filename, char format)
     
     if (g->stream == NULL)
     {
+        fprintf(stderr, "Could not open file.\n");
         return 1;
     }
     

@@ -4,6 +4,8 @@ int iterate(graph *g, double alpha, double *x, double *y)
 {
     node v;
     unsigned long long i;
+    double prob;
+    unsigned long long j;
 
     for (i = 0; i < g->n; i++)
     {
@@ -16,9 +18,8 @@ int iterate(graph *g, double alpha, double *x, double *y)
         
         if (v.deg != 0)
         {
-            double prob = 1.0 / (double) v.deg;
+            prob = 1.0 / (double) v.deg;
 
-            unsigned long long j;
             for (j = 0; j < v.deg; j++)
             {
                 y[v.adj[j]] += alpha*x[i]*prob;
@@ -33,10 +34,10 @@ int iterate(graph *g, double alpha, double *x, double *y)
     {
         sum += y[i];
     }
-    sum = (1.0 - sum) / (double) g->n;
+    double remainder = (1.0 - sum) / (double) g->n;
     for (i = 0; i < g->n; i++)
     {
-        y[i] += sum;
+        y[i] += remainder;
     }
 
     rewindedges(g);
@@ -60,8 +61,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
     while (iter < maxit)
     {
         iterate(g, alpha, x, y);
-        iterate(g, alpha, y, x);
-        iter += 2;
+        iter++;
 
         norm = 0.0;
         double diff;
@@ -77,8 +77,12 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
                 norm -= diff;
             }
         }
+        
+        double *temp = x;
+        x = y;
+        y = temp;
 
-        fprintf(stderr, "After %d iterations: %e\n", iter, norm);
+        fprintf(stderr, "%d: %e\n", iter, norm);
 
         if (norm < tol)
         {
@@ -91,29 +95,52 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
     return 0;
 }
 
-int main()
+int main(int argc, char *argv[])
 {
-    graph g;
-    initialize(&g, "/media/drive/graphs/wb-cs.stanford.badj", BADJ);
+    if (argc < 3)
+    {
+        fprintf(stderr, "Usage: ./pagerank [graphfile] [badj|bsmat|smat]\n");
+        return 1;
+    }
+    
+    char format = BADJ;
+    if (!strcmp(argv[2], "bsmat"))
+    {
+        format = BSMAT;
+    }
+    else if (!strcmp(argv[2], "smat"))
+    {
+        format = SMAT;
+    }
+    else if (!strcmp(argv[2], "badj"))
+    {
+        format = BADJ;
+    }
+    else
+    {
+        fprintf(stderr, "Unknown format.\n");
+        return 1;
+    }
 
-    fprintf(stderr, "Nodes: %llu\n", g.n);
-    fprintf(stderr, "Edges: %llu\n\n", g.m);
+    graph g;
+    if (initialize(&g, argv[1], format))
+    {
+        return 1;
+    }
+
+    printf("Nodes: %llu\n", g.n);
+    printf("Edges: %llu\n\n", g.m);
 
     double alpha = 0.85;
     double tol = 1e-8;
-    int maxit = 100;
+    int maxit = 1000;
 
     double *x = malloc(g.n * sizeof(double));
     
-    int i;
-    for (i = 0; i < g.n; i++)
-    {
-        x[i] = 1.0 / (double) g.n;
-    }
-
     power(&g, alpha, tol, maxit, x);
     
     fprintf(stderr, "\n");
+    int i;
     for (i = 0; i < 10; i++)
     {
         fprintf(stderr, "PageRank vector: %e\n", x[i]);
