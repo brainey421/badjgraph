@@ -29,7 +29,6 @@ struct edge
 {
     unsigned long long src;     // source node
     unsigned long long dest;    // destination node
-    unsigned int weight;        // edge weight
 };
 
 /*
@@ -44,6 +43,8 @@ struct node
 typedef struct graph graph;
 typedef struct edge edge;
 typedef struct node node;
+
+edge recentedge;                // most recently read edge
 
 int initialize(graph *g, char *filename, char format);  // initialize graph
 int nextedge(graph *g, edge *e);                        // get next edge

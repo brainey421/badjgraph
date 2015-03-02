@@ -46,12 +46,11 @@ int initialize(graph *g, char *filename, char format)
         unsigned long long n;
         unsigned long long m;
 
-        fread(&n, sizeof(unsigned long long), 1, g->stream);
-        fread(&m, sizeof(unsigned long long), 1, g->stream);
-
-        g->n = n;
-        g->m = m;
+        fread(&g->n, sizeof(unsigned long long), 1, g->stream);
+        fread(&g->m, sizeof(unsigned long long), 1, g->stream);
     }
+
+    recentedge.src = -1;
 
     return 0;
 }
@@ -74,7 +73,6 @@ int nextedge(graph *g, edge *e)
         e->dest = strtoull(buff, NULL, 0);
 
         fscanf(g->stream, "%s", buff);
-        e->weight = atoi(buff);
     }
     else if (g->format == BSMAT)
     {
@@ -83,8 +81,6 @@ int nextedge(graph *g, edge *e)
         fread(&e->src, sizeof(unsigned long long), 1, g->stream);
         fread(&e->dest, sizeof(unsigned long long), 1, g->stream);
         fread(&weight, sizeof(double), 1, g->stream);
-
-        e->weight = 1;
     }
     else
     {
@@ -105,10 +101,24 @@ int nextnode(graph *g, node *v, unsigned long long i)
 
         edge e;
 
-        while (!nextedge(g, &e))
+        while (1)
         {
-            if (e.src != i)
+            if (v->deg == 0 && recentedge.src == i)
             {
+                e = recentedge;
+            }
+            else if (recentedge.src != -1 && recentedge.src > i)
+            {
+                break;
+            }
+            else if (!(nextedge(g, &e)))
+            {
+                recentedge.src = -1;
+                break;
+            }
+            else if (e.src != i)
+            {
+                recentedge = e;
                 break;
             }
         
@@ -128,19 +138,15 @@ int nextnode(graph *g, node *v, unsigned long long i)
             v->adj[v->deg] = e.dest;
             v->deg++;
         }
-
-        fseek(g->stream, -1*(2*sizeof(unsigned long long) + sizeof(double)), SEEK_CUR);
     }
     else
     {
-        unsigned long long deg;
-        fread(&deg, sizeof(unsigned long long), 1, g->stream);
-        v->deg = deg;
+        fread(&v->deg, sizeof(unsigned long long), 1, g->stream);
 
-        v->adj = malloc(deg*sizeof(unsigned long long));
+        v->adj = malloc(v->deg*sizeof(unsigned long long));
 
         unsigned long long j;
-        for (j = 0; j < deg; j++)
+        for (j = 0; j < v->deg; j++)
         {
             fread(v->adj + j, sizeof(unsigned long long), 1, g->stream);
         }
