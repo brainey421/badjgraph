@@ -111,7 +111,7 @@ int nextnode(graph *g, node *v, unsigned long long i)
             {
                 break;
             }
-            else if (!(nextedge(g, &e)))
+            else if (nextedge(g, &e))
             {
                 recentedge.src = -1;
                 break;
