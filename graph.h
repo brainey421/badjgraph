@@ -10,7 +10,7 @@
 #define BADJ        2
 
 /*
- * Graph in SMAT/BSMAT format
+ * Graph in SMAT/BSMAT/BADJ format
  */
 struct graph
 {
