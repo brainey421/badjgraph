@@ -94,7 +94,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
 int main()
 {
     graph g;
-    initialize(&g, "/media/drive/graphs/cnr-2000.badj", BADJ);
+    initialize(&g, "/media/drive/graphs/wb-cs.stanford.badj", BADJ);
 
     fprintf(stderr, "Nodes: %llu\n", g.n);
     fprintf(stderr, "Edges: %llu\n\n", g.m);
