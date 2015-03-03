@@ -45,7 +45,7 @@ int iterate(graph *g, double alpha, double *x, double *y)
     return 0;
 }
 
-int power(graph *g, double alpha, double tol, int maxit, double *x)
+int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 {
     unsigned long long i;
     double init = 1.0 / (double) g->n;
@@ -53,8 +53,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
     {
         x[i] = init;
     }
-
-    double *y = malloc(g->n * sizeof(double));
 
     int iter = 0;
     double norm;
@@ -89,8 +87,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x)
             break;
         }
     }
-
-    free(y);
 
     return 0;
 }
@@ -136,8 +132,9 @@ int main(int argc, char *argv[])
     int maxit = 1000;
 
     double *x = malloc(g.n * sizeof(double));
+    double *y = malloc(g.n * sizeof(double));
     
-    power(&g, alpha, tol, maxit, x);
+    power(&g, alpha, tol, maxit, x, y);
     
     fprintf(stderr, "\n");
     int i;
@@ -147,6 +144,7 @@ int main(int argc, char *argv[])
     }
 
     free(x);
+    free(y);
 
     return 0;
 }
