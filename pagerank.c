@@ -136,13 +136,6 @@ int main(int argc, char *argv[])
     
     power(&g, alpha, tol, maxit, x, y);
     
-    fprintf(stderr, "\n");
-    int i;
-    for (i = 0; i < 10; i++)
-    {
-        fprintf(stderr, "PageRank vector: %e\n", x[i]);
-    }
-
     free(x);
     free(y);
 
