@@ -1,6 +1,6 @@
 #include "graph.h"
 
-int iterate(graph *g, double alpha, double *x, double *y)
+int poweriterate(graph *g, double alpha, double *x, double *y)
 {
     node v;
     unsigned long long i;
@@ -22,7 +22,7 @@ int iterate(graph *g, double alpha, double *x, double *y)
 
             for (j = 0; j < v.deg; j++)
             {
-                y[v.adj[j]] += x[i]*prob;
+                y[v.adj[j]] += prob*x[i];
             }
         }
 
@@ -65,7 +65,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
     double *tmp;
     while (iter < maxit)
     {
-        iterate(g, alpha, x, y);
+        poweriterate(g, alpha, x, y);
         iter++;
 
         norm = 0.0;
@@ -92,6 +92,123 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
         {
             break;
         }
+    }
+
+    return 0;
+}
+
+int updateiterate(graph *g, double alpha, double *x, double *y)
+{
+    double zi;
+    node v;
+    double prob;
+    unsigned long long i;
+    unsigned long long j;
+
+    for (i = 0; i < g->n; i++)
+    {
+        zi = y[i];
+        x[i] += zi;
+
+        nextnode(g, &v, i);
+        
+        if (v.deg != 0)
+        {
+            prob = alpha / (double) v.deg;
+
+            for (j = 0; j < v.deg; j++)
+            {
+                y[v.adj[j]] += prob*zi;
+            }
+        }
+
+        y[i] -= zi;
+
+        free(v.adj);
+    }
+
+    rewindedges(g);
+
+    return 0;
+}
+
+int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
+{
+    unsigned long long i;
+    double init = 1.0 / (double) g->n;
+    for (i = 0; i < g->n; i++)
+    {
+        x[i] = init;
+    }
+
+    int iter = -1;
+    double ynorm;
+    double xnorm;
+    double error;
+
+    poweriterate(g, alpha, x, y);
+    iter++;
+
+    ynorm = 0.0;
+    for (i = 0; i < g->n; i++)
+    {
+        y[i] = y[i] - x[i];
+        if (y[i] > 0.0)
+        {
+            ynorm += y[i];
+        }
+        else
+        {
+            ynorm -= y[i];
+        }
+    }
+
+    fprintf(stderr, "%d: %e\n", iter, ynorm);
+
+    while (iter < maxit)
+    {
+        updateiterate(g, alpha, x, y);
+        iter++;
+
+        ynorm = 0.0;
+        for (i = 0; i < g->n; i++)
+        {
+            if (y[i] > 0.0)
+            {
+                ynorm += y[i];
+            }
+            else
+            {
+                ynorm -= y[i];
+            }
+        }
+       
+        xnorm = 0.0;
+        for (i = 0; i < g->n; i++)
+        {
+            if (x[i] > 0.0)
+            {
+                xnorm += x[i];
+            }
+            else
+            {
+                xnorm -= x[i];
+            }
+        }
+
+        error = ynorm / xnorm;
+
+        fprintf(stderr, "%d: %e\n", iter, error);
+
+        if (error < tol)
+        {
+            break;
+        }
+    }
+
+    for (i = 0; i < g->n; i++)
+    {
+        x[i] = x[i] / xnorm;
     }
 
     return 0;
@@ -130,8 +247,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    printf("Nodes: %llu\n", g.n);
-    printf("Edges: %llu\n\n", g.m);
+    fprintf(stderr, "Nodes: %llu\n", g.n);
+    fprintf(stderr, "Edges: %llu\n\n", g.m);
 
     double alpha = 0.85;
     double tol = 1e-8;
