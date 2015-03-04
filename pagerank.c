@@ -22,11 +22,16 @@ int iterate(graph *g, double alpha, double *x, double *y)
 
             for (j = 0; j < v.deg; j++)
             {
-                y[v.adj[j]] += alpha*x[i]*prob;
+                y[v.adj[j]] += x[i]*prob;
             }
         }
 
         free(v.adj);
+    }
+
+    for (i = 0; i < g->n; i++)
+    {
+        y[i] *= alpha;
     }
 
     double sum = 0.0;
@@ -56,13 +61,14 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 
     int iter = 0;
     double norm;
+    double diff;
+    double *tmp;
     while (iter < maxit)
     {
         iterate(g, alpha, x, y);
         iter++;
 
         norm = 0.0;
-        double diff;
         for (i = 0; i < g->n; i++)
         {
             diff = x[i] - y[i];
@@ -76,9 +82,9 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
             }
         }
         
-        double *temp = x;
+        tmp = x;
         x = y;
-        y = temp;
+        y = tmp;
 
         fprintf(stderr, "%d: %e\n", iter, norm);
 
