@@ -216,9 +216,9 @@ int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3)
+    if (argc < 4)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] [badj|bsmat|smat]\n");
+        fprintf(stderr, "Usage: ./pagerank [graphfile] [badj|bsmat|smat] [power|update]\n");
         return 1;
     }
     
@@ -257,7 +257,21 @@ int main(int argc, char *argv[])
     double *x = malloc(g.n * sizeof(double));
     double *y = malloc(g.n * sizeof(double));
     
-    power(&g, alpha, tol, maxit, x, y);
+    if (!strcmp(argv[3], "power"))
+    {
+        power(&g, alpha, tol, maxit, x, y);
+    }
+    else if (!strcmp(argv[3], "update"))
+    {
+        update(&g, alpha, tol, maxit, x, y);
+    }
+    else
+    {
+        fprintf(stderr, "Unknown algorithm.\n");
+        free(x);
+        free(y);
+        return 1;
+    }
     
     free(x);
     free(y);
