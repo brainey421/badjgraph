@@ -214,6 +214,8 @@ int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
     return 0;
 }
 
+/* Computes the PageRank vector of a directed graph in BADJ, BSMAT, or 
+ * SMAT format using PowerIteration or UpdateIteration. */
 int main(int argc, char *argv[])
 {
     if (argc < 4)
@@ -272,7 +274,7 @@ int main(int argc, char *argv[])
         free(y);
         return 1;
     }
-    
+   
     free(x);
     free(y);
 
