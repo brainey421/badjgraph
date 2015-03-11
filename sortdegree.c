@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
 
         mynode = malloc((degree[node[i]] + 1)*sizeof(unsigned long long));
         fread(mynode, sizeof(unsigned long long), degree[node[i]] + 1, g.stream);
-        for (j = 1; j < degree[i] + 1; j++)
+        for (j = 1; j < degree[node[i]] + 1; j++)
         {
             mynode[j] = newpos[mynode[j]];
         }
