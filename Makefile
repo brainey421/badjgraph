@@ -1,4 +1,4 @@
-all: pagerank reverse sortdegree
+all: pagerank reverse sortdegree readedges
 
 pagerank: pagerank.c graph.o
 	gcc -o pagerank pagerank.c graph.o
@@ -9,6 +9,9 @@ reverse: reverse.c graph.o
 sortdegree: sortdegree.c graph.o
 	gcc -o sortdegree sortdegree.c graph.o
 
+readedges: readedges.c graph.o
+	gcc -o readedges readedges.c graph.o
+
 graph.o: graph.c graph.h
 	gcc -c graph.c
 
@@ -17,3 +20,4 @@ clean:
 	rm -f pagerank
 	rm -f reverse
 	rm -f sortdegree
+	rm -f readedges
