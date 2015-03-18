@@ -18,7 +18,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
         
         if (v.deg != 0)
         {
-            prob = 1.0 / (double) v.deg;
+            prob = alpha / (double) v.deg;
 
             for (j = 0; j < v.deg; j++)
             {
@@ -27,11 +27,6 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
         }
 
         free(v.adj);
-    }
-
-    for (i = 0; i < g->n; i++)
-    {
-        y[i] *= alpha;
     }
 
     double sum = 0.0;
@@ -273,6 +268,14 @@ int main(int argc, char *argv[])
         free(x);
         free(y);
         return 1;
+    }
+
+    // Test
+    fprintf(stderr, "\n");
+    int i;
+    for (i = 0; i < 10; i++)
+    {
+        fprintf(stderr, "%d: %e\n", i, x[i]);
     }
    
     free(x);

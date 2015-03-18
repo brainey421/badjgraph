@@ -9,7 +9,7 @@ int initialize(graph *g, char *filename, char format)
     }
 
     strcpy(g->filename, filename);
-    g->stream = fopen(g->filename, "r");
+    g->stream = (FILE *) fopen64(g->filename, "r");
     
     if (g->stream == NULL)
     {
