@@ -141,14 +141,34 @@ int nextnode(graph *g, node *v, unsigned long long i)
     }
     else
     {
-        fread(&v->deg, sizeof(unsigned long long), 1, g->stream);
-
-        v->adj = malloc(v->deg*sizeof(unsigned long long));
-
-        unsigned long long j;
-        for (j = 0; j < v->deg; j++)
+        if (g->m > 4294967296)
         {
-            fread(v->adj + j, sizeof(unsigned long long), 1, g->stream);
+            fread(&v->deg, sizeof(unsigned long long), 1, g->stream);
+            
+            v->adj = malloc(v->deg*sizeof(unsigned long long));
+            if (v->deg > 0)
+            {
+                fread(v->adj, sizeof(unsigned long long), (size_t) v->deg, g->stream);
+            }
+        }
+        else
+        {
+            unsigned int val;
+            fread(&val, sizeof(unsigned int), 1, g->stream);
+            v->deg = (unsigned long long) val;
+
+            v->adj = malloc(v->deg*sizeof(unsigned long long));
+            if (v->deg > 0)
+            {
+                unsigned int *vals = malloc(v->deg*sizeof(unsigned int));
+                fread(vals, sizeof(unsigned int), (size_t) v->deg, g->stream);
+                unsigned int j;
+                for (j = 0; j < v->deg; j++)
+                {
+                    v->adj[j] = (unsigned long long) vals[j];
+                }
+                free(vals);
+            }
         }
     }
 
