@@ -39,7 +39,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
     {
         y[i] += remainder;
     }
-
+    
     rewindedges(g);
 
     return 0;
@@ -209,13 +209,13 @@ int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
     return 0;
 }
 
-/* Computes the PageRank vector of a directed graph in BADJ, BSMAT, or 
- * SMAT format using PowerIteration or UpdateIteration. */
+/* Computes the PageRank vector of a directed graph in SMAT, BSMAT, 
+ * BADJ, or BADJGZ format using PowerIteration or UpdateIteration. */
 int main(int argc, char *argv[])
 {
     if (argc < 4)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] [badj|bsmat|smat] [power|update]\n");
+        fprintf(stderr, "Usage: ./pagerank [graphfile] [smat|bsmat|badj|badjgz] [power|update]\n");
         return 1;
     }
     
@@ -231,6 +231,10 @@ int main(int argc, char *argv[])
     else if (!strcmp(argv[2], "badj"))
     {
         format = BADJ;
+    }
+    else if (!strcmp(argv[2], "badjgz"))
+    {
+        format = BADJGZ;
     }
     else
     {

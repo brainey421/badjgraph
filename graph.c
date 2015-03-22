@@ -112,7 +112,7 @@ int nextedge(graph *g, edge *e)
 
 int nextnode(graph *g, node *v, unsigned long long i)
 {
-    if (g->format != BADJ)
+    if (g->format == SMAT || g->format == BSMAT)
     {
         unsigned long long size = 64;
 
@@ -159,7 +159,7 @@ int nextnode(graph *g, node *v, unsigned long long i)
             v->deg++;
         }
     }
-    else
+    else if (g->format == BADJ)
     {
         if (g->m > 4294967296)
         {
@@ -168,7 +168,7 @@ int nextnode(graph *g, node *v, unsigned long long i)
             v->adj = malloc(v->deg*sizeof(unsigned long long));
             if (v->deg > 0)
             {
-                fread(v->adj, sizeof(unsigned long long), (size_t) v->deg, g->stream);
+                fread(v->adj, sizeof(unsigned long long), v->deg, g->stream);
             }
         }
         else
@@ -181,7 +181,39 @@ int nextnode(graph *g, node *v, unsigned long long i)
             if (v->deg > 0)
             {
                 unsigned int *vals = malloc(v->deg*sizeof(unsigned int));
-                fread(vals, sizeof(unsigned int), (size_t) v->deg, g->stream);
+                fread(vals, sizeof(unsigned int), v->deg, g->stream);
+                unsigned int j;
+                for (j = 0; j < v->deg; j++)
+                {
+                    v->adj[j] = (unsigned long long) vals[j];
+                }
+                free(vals);
+            }
+        }
+    }
+    else
+    {
+        if (g->m > 4294967296)
+        {
+            gzread(g->gzstream, &v->deg, sizeof(unsigned long long));
+            
+            v->adj = malloc(v->deg*sizeof(unsigned long long));
+            if (v->deg > 0)
+            {
+                gzread(g->gzstream, v->adj, v->deg*sizeof(unsigned long long));
+            }
+        }
+        else
+        {
+            unsigned int val;
+            gzread(g->gzstream, &val, sizeof(unsigned int));
+            v->deg = (unsigned long long) val;
+
+            v->adj = malloc(v->deg*sizeof(unsigned long long));
+            if (v->deg > 0)
+            {
+                unsigned int *vals = malloc(v->deg*sizeof(unsigned int));
+                gzread(g->gzstream, vals, v->deg*sizeof(unsigned int));
                 unsigned int j;
                 for (j = 0; j < v->deg; j++)
                 {
@@ -211,9 +243,13 @@ int rewindedges(graph *g)
     {
         fseek(g->stream, 3*sizeof(int), SEEK_SET);
     }
-    else
+    else if (g->format == BADJ)
     {
         fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
+    }
+    else
+    {
+        gzseek(g->gzstream, 2*sizeof(unsigned long long), SEEK_SET);
     }
 
     return 0;

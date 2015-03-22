@@ -1,12 +1,12 @@
 #include "graph.h"
 
-/* Purely reads through the edge file of a directed graph in BADJ, BSMAT, 
- * or SMAT format. */
+/* Purely reads through the edge file of a directed graph in SMAT, BSMAT,
+ * BADJ, or BADJGZ format. */
 int main(int argc, char *argv[])
 {
     if (argc < 4)
     {
-        fprintf(stderr, "Usage: ./readedges [graphfile] [badj|bsmat|smat] [niterations]\n");
+        fprintf(stderr, "Usage: ./readedges [graphfile] [smat|bsmat|badj|badjgz] [niterations]\n");
         return 1;
     }
     
@@ -22,6 +22,10 @@ int main(int argc, char *argv[])
     else if (!strcmp(argv[2], "badj"))
     {
         format = BADJ;
+    }
+    else if (!strcmp(argv[2], "badjgz"))
+    {
+        format = BADJGZ;
     }
     else
     {
