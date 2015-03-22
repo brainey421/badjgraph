@@ -9,12 +9,16 @@ int initialize(graph *g, char *filename, char format)
     }
 
     strcpy(g->filename, filename);
-    g->stream = (FILE *) fopen64(g->filename, "r");
     
-    if (g->stream == NULL)
+    if (format != BADJGZ)
     {
-        fprintf(stderr, "Could not open file.\n");
-        return 1;
+        g->stream = (FILE *) fopen64(g->filename, "r");
+    
+        if (g->stream == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+            return 1;
+        }
     }
     
     g->format = format;
@@ -41,13 +45,29 @@ int initialize(graph *g, char *filename, char format)
         g->n = (unsigned long long) n;
         g->m = (unsigned long long) m;
     }
-    else
+    else if (g->format == BADJ)
     {
         unsigned long long n;
         unsigned long long m;
 
         fread(&g->n, sizeof(unsigned long long), 1, g->stream);
         fread(&g->m, sizeof(unsigned long long), 1, g->stream);
+    }
+    else
+    {
+        g->gzstream = (gzFile) gzopen64(g->filename, "r");
+    
+        if (g->gzstream == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+            return 1;
+        }
+
+        unsigned long long n;
+        unsigned long long m;
+
+        gzread(g->gzstream, &g->n, sizeof(unsigned long long));
+        gzread(g->gzstream, &g->m, sizeof(unsigned long long));
     }
 
     recentedge.src = -1;

@@ -2,20 +2,24 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "zlib.h"
+
 #define FILENAMELEN 1024
 #define BUFFSIZE    32
 
 #define SMAT        0
 #define BSMAT       1
 #define BADJ        2
+#define BADJGZ      3
 
 /*
- * Graph in SMAT/BSMAT/BADJ format
+ * Graph in SMAT/BSMAT/BADJ/BADJGZ format
  */
 struct graph
 {
     char filename[FILENAMELEN]; // name of graph file
     FILE *stream;               // pointer to graph file
+    gzFile gzstream;            // compressed graph file
     char format;                // format of graph file
 
     unsigned long long n;       // number of nodes
