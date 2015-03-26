@@ -1,3 +1,6 @@
+# Assumes that zlib is installed and configured.
+# Assumes little endian.
+
 all: pagerank reverse sortdegree readedges
 
 pagerank: pagerank.c graph.o

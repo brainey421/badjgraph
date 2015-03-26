@@ -166,29 +166,47 @@ int nextnode(graph *g, node *v, unsigned long long i)
             fread(&v->deg, sizeof(unsigned long long), 1, g->stream);
             
             v->adj = malloc(v->deg*sizeof(unsigned long long));
-            if (v->deg > 0)
-            {
-                fread(v->adj, sizeof(unsigned long long), v->deg, g->stream);
-            }
+            fread(v->adj, sizeof(unsigned long long), v->deg, g->stream);
         }
         else
         {
             unsigned int val;
             fread(&val, sizeof(unsigned int), 1, g->stream);
             v->deg = (unsigned long long) val;
+           
+            char *buff = malloc(v->deg*sizeof(unsigned long long));
+            fread(buff, sizeof(unsigned int), v->deg, g->stream);
 
-            v->adj = malloc(v->deg*sizeof(unsigned long long));
-            if (v->deg > 0)
+            long long i;
+            for (i = v->deg-1; i >= 0; i--)
             {
-                unsigned int *vals = malloc(v->deg*sizeof(unsigned int));
-                fread(vals, sizeof(unsigned int), v->deg, g->stream);
-                unsigned int j;
-                for (j = 0; j < v->deg; j++)
+                if (i == 0)
                 {
-                    v->adj[j] = (unsigned long long) vals[j];
+                    buff[i*sizeof(unsigned long long)+4] = buff[i*sizeof(unsigned int)];
+                    buff[i*sizeof(unsigned long long)+5] = buff[i*sizeof(unsigned int)+1];
+                    buff[i*sizeof(unsigned long long)+6] = buff[i*sizeof(unsigned int)+2];
+                    buff[i*sizeof(unsigned long long)+7] = buff[i*sizeof(unsigned int)+3];
+
+                    buff[i*sizeof(unsigned long long)] = buff[i*sizeof(unsigned long long)+4];
+                    buff[i*sizeof(unsigned long long)+1] = buff[i*sizeof(unsigned long long)+5];
+                    buff[i*sizeof(unsigned long long)+2] = buff[i*sizeof(unsigned long long)+6];
+                    buff[i*sizeof(unsigned long long)+3] = buff[i*sizeof(unsigned long long)+7];
                 }
-                free(vals);
+                else
+                {
+                    buff[i*sizeof(unsigned long long)] = buff[i*sizeof(unsigned int)];
+                    buff[i*sizeof(unsigned long long)+1] = buff[i*sizeof(unsigned int)+1];
+                    buff[i*sizeof(unsigned long long)+2] = buff[i*sizeof(unsigned int)+2];
+                    buff[i*sizeof(unsigned long long)+3] = buff[i*sizeof(unsigned int)+3];
+                }
+
+                buff[i*sizeof(unsigned long long)+4] = 0;
+                buff[i*sizeof(unsigned long long)+5] = 0;
+                buff[i*sizeof(unsigned long long)+6] = 0;
+                buff[i*sizeof(unsigned long long)+7] = 0;
             }
+
+            v->adj = (unsigned long long *) buff;
         }
     }
     else
@@ -196,31 +214,49 @@ int nextnode(graph *g, node *v, unsigned long long i)
         if (g->m > 4294967296)
         {
             gzread(g->gzstream, &v->deg, sizeof(unsigned long long));
-            
+
             v->adj = malloc(v->deg*sizeof(unsigned long long));
-            if (v->deg > 0)
-            {
-                gzread(g->gzstream, v->adj, v->deg*sizeof(unsigned long long));
-            }
+            gzread(g->gzstream, &v->adj, v->deg*sizeof(unsigned long long));
         }
         else
         {
             unsigned int val;
             gzread(g->gzstream, &val, sizeof(unsigned int));
             v->deg = (unsigned long long) val;
+           
+            char *buff = malloc(v->deg*sizeof(unsigned long long));
+            gzread(g->gzstream, buff, v->deg*sizeof(unsigned int));
 
-            v->adj = malloc(v->deg*sizeof(unsigned long long));
-            if (v->deg > 0)
+            long long i;
+            for (i = v->deg-1; i >= 0; i--)
             {
-                unsigned int *vals = malloc(v->deg*sizeof(unsigned int));
-                gzread(g->gzstream, vals, v->deg*sizeof(unsigned int));
-                unsigned int j;
-                for (j = 0; j < v->deg; j++)
+                if (i == 0)
                 {
-                    v->adj[j] = (unsigned long long) vals[j];
+                    buff[i*sizeof(unsigned long long)+4] = buff[i*sizeof(unsigned int)];
+                    buff[i*sizeof(unsigned long long)+5] = buff[i*sizeof(unsigned int)+1];
+                    buff[i*sizeof(unsigned long long)+6] = buff[i*sizeof(unsigned int)+2];
+                    buff[i*sizeof(unsigned long long)+7] = buff[i*sizeof(unsigned int)+3];
+
+                    buff[i*sizeof(unsigned long long)] = buff[i*sizeof(unsigned long long)+4];
+                    buff[i*sizeof(unsigned long long)+1] = buff[i*sizeof(unsigned long long)+5];
+                    buff[i*sizeof(unsigned long long)+2] = buff[i*sizeof(unsigned long long)+6];
+                    buff[i*sizeof(unsigned long long)+3] = buff[i*sizeof(unsigned long long)+7];
                 }
-                free(vals);
+                else
+                {
+                    buff[i*sizeof(unsigned long long)] = buff[i*sizeof(unsigned int)];
+                    buff[i*sizeof(unsigned long long)+1] = buff[i*sizeof(unsigned int)+1];
+                    buff[i*sizeof(unsigned long long)+2] = buff[i*sizeof(unsigned int)+2];
+                    buff[i*sizeof(unsigned long long)+3] = buff[i*sizeof(unsigned int)+3];
+                }
+
+                buff[i*sizeof(unsigned long long)+4] = 0;
+                buff[i*sizeof(unsigned long long)+5] = 0;
+                buff[i*sizeof(unsigned long long)+6] = 0;
+                buff[i*sizeof(unsigned long long)+7] = 0;
             }
+
+            v->adj = (unsigned long long *) buff;
         }
     }
 
