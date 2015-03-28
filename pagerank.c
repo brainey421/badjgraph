@@ -252,7 +252,7 @@ int main(int argc, char *argv[])
 
     double alpha = 0.85;
     double tol = 1e-8;
-    int maxit = 1;
+    int maxit = 1000;
 
     double *x = malloc(g.n * sizeof(double));
     double *y = malloc(g.n * sizeof(double));
