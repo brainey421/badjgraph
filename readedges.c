@@ -42,8 +42,8 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Nodes: %llu\n", g.n);
     fprintf(stderr, "Edges: %llu\n\n", g.m);
 
-    unsigned long long niter = (unsigned long long) atoi(argv[3]);
-    unsigned long long i, j;
+    unsigned int niter = (unsigned int) atoi(argv[3]);
+    unsigned int i, j;
     node v;
     for (i = 0; i < niter; i++)
     {

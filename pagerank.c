@@ -3,9 +3,9 @@
 int poweriterate(graph *g, double alpha, double *x, double *y)
 {
     node v;
-    unsigned long long i;
+    unsigned int i;
     double prob;
-    unsigned long long j;
+    unsigned int j;
 
     for (i = 0; i < g->n; i++)
     {
@@ -15,7 +15,6 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
     for (i = 0; i < g->n; i++)
     {
         nextnode(g, &v, i);
-        
         if (v.deg != 0)
         {
             prob = alpha / (double) v.deg;
@@ -47,7 +46,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
 
 int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 {
-    unsigned long long i;
+    unsigned int i;
     double init = 1.0 / (double) g->n;
     for (i = 0; i < g->n; i++)
     {
@@ -97,8 +96,8 @@ int updateiterate(graph *g, double alpha, double *x, double *y)
     double zi;
     node v;
     double prob;
-    unsigned long long i;
-    unsigned long long j;
+    unsigned int i;
+    unsigned int j;
 
     for (i = 0; i < g->n; i++)
     {
@@ -129,7 +128,7 @@ int updateiterate(graph *g, double alpha, double *x, double *y)
 
 int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 {
-    unsigned long long i;
+    unsigned int i;
     double init = 1.0 / (double) g->n;
     for (i = 0; i < g->n; i++)
     {
@@ -253,7 +252,7 @@ int main(int argc, char *argv[])
 
     double alpha = 0.85;
     double tol = 1e-8;
-    int maxit = 1000;
+    int maxit = 1;
 
     double *x = malloc(g.n * sizeof(double));
     double *y = malloc(g.n * sizeof(double));

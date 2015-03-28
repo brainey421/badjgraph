@@ -31,8 +31,8 @@ struct graph
  */
 struct edge
 {
-    unsigned long long src;     // source node
-    unsigned long long dest;    // destination node
+    unsigned int src;           // source node
+    unsigned int dest;          // destination node
 };
 
 /*
@@ -40,8 +40,8 @@ struct edge
  */
 struct node
 {
-    unsigned long long deg;     // out-degree
-    unsigned long long *adj;    // adjacent nodes
+    unsigned int deg;           // out-degree
+    unsigned int *adj;          // adjacent nodes
 };
 
 typedef struct graph graph;
@@ -52,5 +52,5 @@ edge recentedge;                // most recently read edge
 
 int initialize(graph *g, char *filename, char format);  // initialize graph
 int nextedge(graph *g, edge *e);                        // get next edge
-int nextnode(graph *g, node *v, unsigned long long i);  // get next node; must call free(v->adj) after
+int nextnode(graph *g, node *v, unsigned int i);        // get next node; must call free(v->adj) after
 int rewindedges(graph *g);                              // rewind edge file pointer

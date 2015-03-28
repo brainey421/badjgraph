@@ -1,6 +1,7 @@
 #include "graph.h"
 
 /* Reverses the order of the edges in a graph in BADJ format. */
+/* OUTDATED -- should use unsigned int, not unsigned long long. */
 int main(int argc, char *argv[])
 {
     if (argc < 3)

@@ -1,6 +1,7 @@
 #include "graph.h"
 
 /* Sorts the nodes in a graph in BADJ format by degree in descending order. */
+/* OUTDATED -- should use unsigned int, not unsigned long long. */
 int main(int argc, char *argv[])
 {
     if (argc < 3)
