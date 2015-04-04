@@ -27,7 +27,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
 
         free(v.adj);
     }
-
+    /*
     double sum = 0.0;
     for (i = 0; i < g->n; i++)
     {
@@ -38,7 +38,14 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
     {
         y[i] += remainder;
     }
-    
+    */
+
+    double remainder = (1.0 - alpha) / (double) g->n;
+    for (i = 0; i < g->n; i++)
+    {
+        y[i] += remainder;
+    }
+
     rewindedges(g);
 
     return 0;
@@ -46,6 +53,8 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
 
 int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 {
+    double *xoriginal = x;
+    
     unsigned int i;
     double init = 1.0 / (double) g->n;
     for (i = 0; i < g->n; i++)
@@ -55,12 +64,18 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 
     int iter = 0;
     double norm;
+    double xnorm;
+    double error;
     double diff;
     double *tmp;
     while (iter < maxit)
     {
         poweriterate(g, alpha, x, y);
         iter++;
+
+        tmp = x;
+        x = y;
+        y = tmp;
 
         norm = 0.0;
         for (i = 0; i < g->n; i++)
@@ -76,16 +91,32 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
             }
         }
         
-        tmp = x;
-        x = y;
-        y = tmp;
+        xnorm = 0.0;
+        for (i = 0; i < g->n; i++)
+        {
+            if (x[i] > 0.0)
+            {
+                xnorm += x[i];
+            }
+            else
+            {
+                xnorm -= x[i];
+            }
+        }
 
-        fprintf(stderr, "%d: %e\n", iter, norm);
+        error = norm / xnorm;
 
-        if (norm < tol)
+        fprintf(stderr, "%d: %e\n", iter, error);
+
+        if (error < tol)
         {
             break;
         }
+    }
+
+    for (i = 0; i < g->n; i++)
+    {
+        xoriginal[i] = x[i] / xnorm;
     }
 
     return 0;
