@@ -294,14 +294,14 @@ int main(int argc, char *argv[])
     }
 
     // Test
-    // /*
+    /*
     fprintf(stderr, "\n");
     int i;
     for (i = 0; i < 10; i++)
     {
         fprintf(stderr, "%d: %e\n", i, x[i]);
     }
-    // */
+    */
    
     free(x);
     free(y);
