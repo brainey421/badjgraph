@@ -4,8 +4,8 @@ A C implementation of the power iteration algorithm to compute the PageRank vect
 
 ## Example Usage
 
-		make
-		./pagerank data/wb-cs.stanford.badj badj power 1000
+		$ make
+		$ ./pagerank data/wb-cs.stanford.badj badj power 1000
 
 ## BADJ Format
 
