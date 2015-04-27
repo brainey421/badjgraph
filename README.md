@@ -39,7 +39,7 @@ Here is an example of how to read through a graph in BADJ format:
 
 This repository already includes a program to read through a graph.
 
-		./readedges 
+		$ ./readedges 
 		Usage: ./readedges [graphfile] [smat|bsmat|badj] [niterations]
 
 ## Computing PageRank
