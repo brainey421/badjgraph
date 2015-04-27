@@ -7,6 +7,8 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
     double prob;
     unsigned int j;
 
+    double nolinks = 0.0;
+
     for (i = 0; i < g->n; i++)
     {
         y[i] = 0.0;
@@ -18,29 +20,20 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
         if (v.deg != 0)
         {
             prob = alpha / (double) v.deg;
-
             for (j = 0; j < v.deg; j++)
             {
                 y[v.adj[j]] += prob*x[i];
             }
         }
+        else
+        {
+            nolinks += x[i];
+        }
 
         free(v.adj);
     }
-    /*
-    double sum = 0.0;
-    for (i = 0; i < g->n; i++)
-    {
-        sum += y[i];
-    }
-    double remainder = (1.0 - sum) / (double) g->n;
-    for (i = 0; i < g->n; i++)
-    {
-        y[i] += remainder;
-    }
-    */
 
-    double remainder = (1.0 - alpha) / (double) g->n;
+    double remainder = alpha * nolinks / (double) g->n + (1.0 - alpha) / (double) g->n;
     for (i = 0; i < g->n; i++)
     {
         y[i] += remainder;
@@ -68,6 +61,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
     double error;
     double diff;
     double *tmp;
+
     while (iter < maxit)
     {
         poweriterate(g, alpha, x, y);
@@ -140,7 +134,6 @@ int updateiterate(graph *g, double alpha, double *x, double *y)
         if (v.deg != 0)
         {
             prob = alpha / (double) v.deg;
-
             for (j = 0; j < v.deg; j++)
             {
                 y[v.adj[j]] += prob*zi;
@@ -239,13 +232,13 @@ int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
     return 0;
 }
 
-/* Computes the PageRank vector of a directed graph in SMAT, BSMAT, 
- * BADJ, or BADJGZ format using PowerIteration or UpdateIteration. */
+/* Computes the PageRank vector of a directed graph in SMAT, BSMAT, or
+ * BADJ format using PowerIteration or UpdateIteration. */
 int main(int argc, char *argv[])
 {
-    if (argc < 4)
+    if (argc < 5)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] [smat|bsmat|badj|badjgz] [power|update]\n");
+        fprintf(stderr, "Usage: ./pagerank [graphfile] [smat|bsmat|badj] [power|update] [maxiter]\n");
         return 1;
     }
     
@@ -261,10 +254,6 @@ int main(int argc, char *argv[])
     else if (!strcmp(argv[2], "badj"))
     {
         format = BADJ;
-    }
-    else if (!strcmp(argv[2], "badjgz"))
-    {
-        format = BADJGZ;
     }
     else
     {
@@ -283,7 +272,7 @@ int main(int argc, char *argv[])
 
     double alpha = 0.85;
     double tol = 1e-8;
-    int maxit = 1000;
+    int maxit = atoi(argv[4]);
 
     double *x = malloc(g.n * sizeof(double));
     double *y = malloc(g.n * sizeof(double));
@@ -305,12 +294,14 @@ int main(int argc, char *argv[])
     }
 
     // Test
+    // /*
     fprintf(stderr, "\n");
     int i;
     for (i = 0; i < 10; i++)
     {
         fprintf(stderr, "%d: %e\n", i, x[i]);
     }
+    // */
    
     free(x);
     free(y);

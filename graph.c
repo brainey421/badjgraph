@@ -10,15 +10,12 @@ int initialize(graph *g, char *filename, char format)
 
     strcpy(g->filename, filename);
     
-    if (format != BADJGZ)
+    g->stream = (FILE *) fopen64(g->filename, "r");
+
+    if (g->stream == NULL)
     {
-        g->stream = (FILE *) fopen64(g->filename, "r");
-    
-        if (g->stream == NULL)
-        {
-            fprintf(stderr, "Could not open file.\n");
-            return 1;
-        }
+        fprintf(stderr, "Could not open file.\n");
+        return 1;
     }
     
     g->format = format;
@@ -45,23 +42,10 @@ int initialize(graph *g, char *filename, char format)
         g->n = (unsigned long long) n;
         g->m = (unsigned long long) m;
     }
-    else if (g->format == BADJ)
+    else
     {
         fread(&g->n, sizeof(unsigned long long), 1, g->stream);
         fread(&g->m, sizeof(unsigned long long), 1, g->stream);
-    }
-    else
-    {
-        g->gzstream = (gzFile) gzopen64(g->filename, "r");
-    
-        if (g->gzstream == NULL)
-        {
-            fprintf(stderr, "Could not open file.\n");
-            return 1;
-        }
-
-        gzread(g->gzstream, &g->n, sizeof(unsigned long long));
-        gzread(g->gzstream, &g->m, sizeof(unsigned long long));
     }
 
     if (g->m > 4294967296)
@@ -163,17 +147,11 @@ int nextnode(graph *g, node *v, unsigned int i)
             v->deg++;
         }
     }
-    else if (g->format == BADJ)
+    else
     {
         fread(&v->deg, sizeof(unsigned int), 1, g->stream);
         v->adj = malloc(v->deg*sizeof(unsigned int));       
         fread(v->adj, sizeof(unsigned int), v->deg, g->stream);
-    }
-    else
-    {
-        gzread(g->gzstream, &v->deg, sizeof(unsigned int));
-        v->adj = malloc(v->deg*sizeof(unsigned int));
-        gzread(g->gzstream, v->adj, v->deg*sizeof(unsigned int));
     }
 
     return 0;
@@ -195,13 +173,9 @@ int rewindedges(graph *g)
     {
         fseek(g->stream, 3*sizeof(int), SEEK_SET);
     }
-    else if (g->format == BADJ)
-    {
-        fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
-    }
     else
     {
-        gzseek(g->gzstream, 2*sizeof(unsigned long long), SEEK_SET);
+        fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
     }
 
     return 0;
