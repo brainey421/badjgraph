@@ -8,174 +8,230 @@ int initialize(graph *g, char *filename, char format)
         return 1;
     }
 
-    strcpy(g->filename, filename);
-    
-    g->stream = (FILE *) fopen64(g->filename, "r");
-
-    if (g->stream == NULL)
-    {
-        fprintf(stderr, "Could not open file.\n");
-        return 1;
-    }
-    
     g->format = format;
-
-    if (g->format == SMAT)
-    {
-        char buff[BUFFSIZE];
     
-        fscanf(g->stream, "%s", buff);
-        fscanf(g->stream, "%s", buff);
-        g->n = strtoull(buff, NULL, 0);
+    if (g->format == BADJ)
+    {
+        strcpy(g->filename, filename);    
+        g->stream = (FILE *) fopen64(g->filename, "r");
     
-        fscanf(g->stream, "%s", buff);
-        g->m = strtoull(buff, NULL, 0);
-    }
-    else if (g->format == BSMAT)
-    {
-        int n, m;
+        if (g->stream == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+            return 1;
+        }
 
-        fread(&n, sizeof(int), 1, g->stream);
-        fread(&n, sizeof(int), 1, g->stream);
-        fread(&m, sizeof(int), 1, g->stream);
-
-        g->n = (unsigned long long) n;
-        g->m = (unsigned long long) m;
-    }
-    else
-    {
         fread(&g->n, sizeof(unsigned long long), 1, g->stream);
         fread(&g->m, sizeof(unsigned long long), 1, g->stream);
     }
+    else if (g->format == BADJBLK)
+    {
+        strcpy(g->filename, filename);
+        
+        char indexfile[FILENAMELEN];
+        strcpy(indexfile, g->filename);
+        strcat(indexfile, "/0");
+        g->stream = fopen(indexfile, "r");
 
+        if (g->stream == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+            return 1;
+        }
+
+        fread(&g->n, sizeof(unsigned long long), 1, g->stream);
+        fread(&g->m, sizeof(unsigned long long), 1, g->stream);
+        fread(&g->nblks, sizeof(unsigned long long), 1, g->stream);
+
+        fclose(g->stream);
+    }
+    
     if (g->m > 4294967296)
     {
         fprintf(stderr, "Too many edges to handle: %llu\n", g->m);
         return 1;
     }
 
-    recentedge.src = -1;
+    g->currblock = malloc(BLOCKLEN);
+    g->currblocklen = 0;
+    g->currblocki = 0;
+
+    g->nextblock = malloc(BLOCKLEN);
+    g->nextblocklen = 0;
+    g->nextblockno = 1;
+ 
+    pthread_attr_init(&g->attr);
+    pthread_attr_setdetachstate(&g->attr, PTHREAD_CREATE_JOINABLE);
 
     return 0;
 }
 
-int nextedge(graph *g, edge *e)
+int partition(graph *g, char *dirname)
 {
-    if (feof(g->stream))
-    {
-        return 1;
-    }
-   
-    if (g->format == SMAT)
-    {
-        char buff[BUFFSIZE];
-    
-        fscanf(g->stream, "%s", buff);
-        e->src = atoi(buff);
-    
-        fscanf(g->stream, "%s", buff);
-        e->dest = atoi(buff);
+    FILE *out;
+    char filename[FILENAMELEN];
+    char blockno[128];
+    unsigned int nblocks = 0;
+    unsigned int intsread;
+    unsigned int val;
 
-        fscanf(g->stream, "%s", buff);
-    }
-    else if (g->format == BSMAT)
+    while (1)
     {
-        double weight;
-        unsigned long long val;
+        intsread = fread(g->nextblock, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
+        g->nextblocklen = 0;
         
-        fread(&val, sizeof(unsigned long long), 1, g->stream);
-        e->src = (unsigned int) val;
-        fread(&val, sizeof(unsigned long long), 1, g->stream);
-        e->dest = (unsigned int) val;
+        if (intsread == 0)
+        {
+            break;
+        }
+        
+        nblocks++;
+        sprintf(blockno, "%d", nblocks);
+        strcpy(filename, dirname);
+        strcat(filename, "/");
+        strcat(filename, blockno);
+        out = fopen(filename, "w");
 
-        fread(&weight, sizeof(double), 1, g->stream);
-    }
-    else
-    {
-        return 1;
-    }
-
-    return 0;
-}
-
-int nextnode(graph *g, node *v, unsigned int i)
-{
-    if (g->format == SMAT || g->format == BSMAT)
-    {
-        unsigned int size = 64;
-
-        v->deg = 0;
-        v->adj = malloc(size*sizeof(unsigned int));
-
-        edge e;
+        if (out == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+            return 1;
+        }
 
         while (1)
         {
-            if (v->deg == 0 && recentedge.src == i)
-            {
-                e = recentedge;
-            }
-            else if (recentedge.src != -1 && recentedge.src > i)
-            {
-                break;
-            }
-            else if (nextedge(g, &e))
-            {
-                recentedge.src = -1;
-                break;
-            }
-            else if (e.src != i)
-            {
-                recentedge = e;
-                break;
-            }
-        
-            if (v->deg == size)
-            {
-                size = 2*size;
-                unsigned int *tmp = malloc(size*sizeof(unsigned int));
-                unsigned int j;
-                for (j = 0; j < size / 2; j++)
-                {
-                    tmp[j] = v->adj[j];
-                }
-                free(v->adj);
-                v->adj = tmp;
-            }
+            val = g->nextblock[g->nextblocklen];
 
-            v->adj[v->deg] = e.dest;
-            v->deg++;
+            if (g->nextblocklen + 1 + val <= intsread)
+            {
+                g->nextblocklen = g->nextblocklen + 1 + val;
+            }
+            else
+            {
+                fseek(g->stream, (g->nextblocklen - intsread)*sizeof(unsigned int), SEEK_CUR);
+                break;
+            }
         }
+        
+        fwrite(g->nextblock, sizeof(unsigned int), g->nextblocklen, out);
+        fclose(out);
     }
-    else
+
+    strcpy(filename, dirname);
+    strcat(filename, "/0");
+    out = fopen(filename, "w");
+
+    if (out == NULL)
     {
-        fread(&v->deg, sizeof(unsigned int), 1, g->stream);
-        v->adj = malloc(v->deg*sizeof(unsigned int));       
-        fread(v->adj, sizeof(unsigned int), v->deg, g->stream);
+        fprintf(stderr, "Could not open file.\n");
+        return 1;
     }
+
+    unsigned long long nblocksl = (unsigned long long) nblocks;
+    fwrite(&g->n, sizeof(unsigned long long), 1, out);
+    fwrite(&g->m, sizeof(unsigned long long), 1, out);
+    fwrite(&nblocksl, sizeof(unsigned long long), 1, out);
+    fclose(out);
 
     return 0;
 }
 
-int rewindedges(graph *g)
+void *loadblock(void *vg)
 {
-    if (g->format == SMAT)
+    graph *g = (graph *) vg;
+    
+    if (g->format == BADJ)
     {
-        fseek(g->stream, 0, SEEK_SET);
-        
-        char buff[BUFFSIZE];
+        unsigned int intsread;
+        intsread = fread(g->nextblock, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
+        g->nextblocklen = 0;
 
-        fscanf(g->stream, "%s", buff);
-        fscanf(g->stream, "%s", buff);
-        fscanf(g->stream, "%s", buff);
+        if (feof(g->stream))
+        {
+            fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
+        }
+
+        unsigned int val;
+        while (1)
+        {
+            val = g->nextblock[g->nextblocklen];
+
+            if (g->nextblocklen + 1 + val <= intsread)
+            {
+                g->nextblocklen = g->nextblocklen + 1 + val;
+            }
+            else
+            {
+                fseek(g->stream, (g->nextblocklen - intsread)*sizeof(unsigned int), SEEK_CUR);
+                break;
+            }
+        }
     }
-    else if (g->format == BSMAT)
+    else if (g->format == BADJBLK)
     {
-        fseek(g->stream, 3*sizeof(int), SEEK_SET);
+        char graphfile[FILENAMELEN];
+        char blockno[128];
+        sprintf(blockno, "%d", g->nextblockno);
+        strcpy(graphfile, g->filename);
+        strcat(graphfile, "/");
+        strcat(graphfile, blockno);
+        g->stream = fopen(graphfile, "r");
+
+        if (g->stream == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+            return NULL;
+        }
+
+        g->nextblocklen = fread(g->nextblock, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
+
+        fclose(g->stream);
+        
+        g->nextblockno = g->nextblockno + 1;
+        if (g->nextblockno > g->nblks)
+        {
+            g->nextblockno = 1;
+        }
     }
-    else
+
+    return NULL;
+}
+
+int nextnode(graph *g, node *v)
+{
+    if (g->format == BADJ || g->format == BADJBLK)
     {
-        fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
+        if (g->currblocklen == 0)
+        {
+            pthread_create(&g->reader, &g->attr, loadblock, (void *) g);
+            pthread_join(g->reader, NULL);
+
+            unsigned int *tmp = g->currblock;
+            g->currblock = g->nextblock;
+            g->nextblock = tmp;
+            g->currblocklen = g->nextblocklen;
+            g->currblocki = 0;
+        
+            pthread_create(&g->reader, &g->attr, loadblock, (void *) g);
+        }
+
+        if (g->currblocki >= g->currblocklen)
+        {
+            pthread_join(g->reader, NULL);
+
+            unsigned int *tmp = g->currblock;
+            g->currblock = g->nextblock;
+            g->nextblock = tmp;
+            g->currblocklen = g->nextblocklen;
+            g->currblocki = 0;
+        
+            pthread_create(&g->reader, &g->attr, loadblock, (void *) g);
+        }
+
+        v->deg = g->currblock[g->currblocki];
+        g->currblocki++;
+        v->adj = g->currblock + g->currblocki;
+        g->currblocki += v->deg;
     }
 
     return 0;

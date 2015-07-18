@@ -18,6 +18,18 @@ A graph in BADJ format looks like this:
 
 There are sample BADJ files in the data directory.
 
+## Multithreading and Blocks
+
+This PageRank implementation uses two concurrent threads: one to read a block of the graph into memory, and another to perform computation on that block. 
+By default, each block is at most 64MB, as defined in graph.h by BLOCKLEN, and a node's adjacency list does not straddle two blocks.
+
+This repository includes a program to partition a graph in BADJ format into its blocks explicitly. 
+The resulting graph in BADJBLK format is a directory containing one file for each block. 
+In the future, the PageRank program will support compressed blocks to reduce time spent reading the graph. 
+
+		$ ./partition
+		Usage: ./partition [graphfile] [badj] [outdirectory]
+
 ## Reading a BADJ File
 
 Here is an example of how to read through a graph in BADJ format:
@@ -35,16 +47,15 @@ Here is an example of how to read through a graph in BADJ format:
 			}
 			printf("\n");
 		}
-		rewindedges(&g);
 
 This repository already includes a program to read through a graph.
 
 		$ ./readedges 
-		Usage: ./readedges [graphfile] [smat|bsmat|badj] [niterations]
+		Usage: ./readedges [graphfile] [badj|badjblk] [niterations]
 
 ## Computing PageRank
 
 By default, this power iteration implementation uses alpha = 0.85 and iterates until achieving a residual norm of 1e-8.
 
 		 $ ./pagerank
-		Usage: ./pagerank [graphfile] [smat|bsmat|badj] [power|update] [maxiter]
+		Usage: ./pagerank [graphfile] [badj|badjblk] [power|update] [maxiter]

@@ -16,30 +16,28 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
 
     for (i = 0; i < g->n; i++)
     {
-        nextnode(g, &v, i);
+        nextnode(g, &v);
+            
         if (v.deg != 0)
         {
-            prob = alpha / (double) v.deg;
+            prob = alpha / v.deg;
             for (j = 0; j < v.deg; j++)
             {
                 y[v.adj[j]] += prob*x[i];
             }
         }
-        else
-        {
-            nolinks += x[i];
-        }
-
-        free(v.adj);
     }
 
-    double remainder = alpha * nolinks / (double) g->n + (1.0 - alpha) / (double) g->n;
+    double remainder = 1.0;
+    for (i = 0; i < g->n; i++)
+    {
+        remainder -= y[i];
+    }
+    remainder /= (double) g->n;
     for (i = 0; i < g->n; i++)
     {
         y[i] += remainder;
     }
-
-    rewindedges(g);
 
     return 0;
 }
@@ -57,8 +55,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 
     int iter = 0;
     double norm;
-    double xnorm;
-    double error;
     double diff;
     double *tmp;
 
@@ -85,24 +81,9 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
             }
         }
         
-        xnorm = 0.0;
-        for (i = 0; i < g->n; i++)
-        {
-            if (x[i] > 0.0)
-            {
-                xnorm += x[i];
-            }
-            else
-            {
-                xnorm -= x[i];
-            }
-        }
+        fprintf(stderr, "%d: %e\n", iter, norm);
 
-        error = norm / xnorm;
-
-        fprintf(stderr, "%d: %e\n", iter, error);
-
-        if (error < tol)
+        if (norm < tol)
         {
             break;
         }
@@ -110,7 +91,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 
     for (i = 0; i < g->n; i++)
     {
-        xoriginal[i] = x[i] / xnorm;
+        xoriginal[i] = x[i];
     }
 
     return 0;
@@ -129,7 +110,7 @@ int updateiterate(graph *g, double alpha, double *x, double *y)
         zi = y[i];
         x[i] += zi;
 
-        nextnode(g, &v, i);
+        nextnode(g, &v);
         
         if (v.deg != 0)
         {
@@ -141,11 +122,7 @@ int updateiterate(graph *g, double alpha, double *x, double *y)
         }
 
         y[i] -= zi;
-
-        free(v.adj);
     }
-
-    rewindedges(g);
 
     return 0;
 }
@@ -232,28 +209,24 @@ int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
     return 0;
 }
 
-/* Computes the PageRank vector of a directed graph in SMAT, BSMAT, or
+/* Computes the PageRank vector of a directed graph in
  * BADJ format using PowerIteration or UpdateIteration. */
 int main(int argc, char *argv[])
 {
     if (argc < 5)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] [smat|bsmat|badj] [power|update] [maxiter]\n");
+        fprintf(stderr, "Usage: ./pagerank [graphfile] [badj|badjblk] [power|update] [maxiter]\n");
         return 1;
     }
     
     char format;
-    if (!strcmp(argv[2], "bsmat"))
-    {
-        format = BSMAT;
-    }
-    else if (!strcmp(argv[2], "smat"))
-    {
-        format = SMAT;
-    }
-    else if (!strcmp(argv[2], "badj"))
+    if (!strcmp(argv[2], "badj"))
     {
         format = BADJ;
+    }
+    else if (!strcmp(argv[2], "badjblk"))
+    {
+        format = BADJBLK;
     }
     else
     {
@@ -294,14 +267,12 @@ int main(int argc, char *argv[])
     }
 
     // Test
-    /*
     fprintf(stderr, "\n");
     int i;
     for (i = 0; i < 10; i++)
     {
         fprintf(stderr, "%d: %e\n", i, x[i]);
     }
-    */
    
     free(x);
     free(y);
