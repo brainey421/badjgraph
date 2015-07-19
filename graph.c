@@ -108,7 +108,8 @@ int partition(graph *g, char *dirname)
             }
             else
             {
-                fseek(g->stream, (g->nextblocklen - intsread)*sizeof(unsigned int), SEEK_CUR);
+                int extra = intsread - g->nextblocklen;
+                fseek(g->stream, -extra*sizeof(unsigned int), SEEK_CUR);
                 break;
             }
         }
@@ -142,6 +143,7 @@ void *loadblock(void *vg)
     
     if (g->format == BADJ)
     {
+        fprintf(stderr, "%ld\n", ftell(g->stream));
         unsigned int intsread;
         intsread = fread(g->nextblock, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
         g->nextblocklen = 0;
@@ -162,7 +164,8 @@ void *loadblock(void *vg)
             }
             else
             {
-                fseek(g->stream, (g->nextblocklen - intsread)*sizeof(unsigned int), SEEK_CUR);
+                int extra = intsread - g->nextblocklen;
+                fseek(g->stream, -extra*sizeof(unsigned int), SEEK_CUR);
                 break;
             }
         }
