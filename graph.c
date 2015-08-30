@@ -143,7 +143,6 @@ void *loadblock(void *vg)
     
     if (g->format == BADJ)
     {
-        fprintf(stderr, "%ld\n", ftell(g->stream));
         unsigned int intsread;
         intsread = fread(g->nextblock, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
         g->nextblocklen = 0;
