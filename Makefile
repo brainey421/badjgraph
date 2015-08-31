@@ -1,5 +1,3 @@
-# Assumes that zlib is installed and configured.
-
 all: pagerank readedges partition
 
 pagerank: pagerank.c graph.o

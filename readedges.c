@@ -10,6 +10,9 @@ int main(int argc, char *argv[])
         return 1;
     }
     
+    // TODO
+
+    /*
     char format;
     if (!strcmp(argv[2], "badj"))
     {
@@ -46,6 +49,7 @@ int main(int argc, char *argv[])
             nextnode(&g, &v);
         }
     }
+    */
 
     return 0;
 }
