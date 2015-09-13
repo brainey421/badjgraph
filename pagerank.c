@@ -1,5 +1,17 @@
 #include "graph.h"
 
+/* Arguments for powercompute */
+struct powercomputeargs
+{
+    graph *g;               // graph
+    double alpha;           // alpha
+    double *x;              // x
+    double *y;              // y
+    unsigned int threadno;  // thread number
+};
+
+typedef struct powercomputeargs powercomputeargs;
+
 /* Perform PowerIteration computation. */
 void *powercompute(void *vpca)
 {
@@ -31,7 +43,9 @@ void *powercompute(void *vpca)
             {
                 index = v.adj[j];
                 val = prob * x[i];
+                pthread_mutex_lock(&g->lock);
                 y[index] += val;
+                pthread_mutex_unlock(&g->lock);
             }
         }
     }
@@ -186,33 +200,6 @@ int updateiterate(graph *g, double alpha, double *x, double *y)
 {
     // TODO
     
-    /*
-    double zi;
-    node v;
-    double prob;
-    unsigned int i;
-    unsigned int j;
-
-    for (i = 0; i < g->n; i++)
-    {
-        zi = y[i];
-        x[i] += zi;
-
-        nextnode(g, &v);
-        
-        if (v.deg != 0)
-        {
-            prob = alpha / (double) v.deg;
-            for (j = 0; j < v.deg; j++)
-            {
-                y[v.adj[j]] += prob*zi;
-            }
-        }
-
-        y[i] -= zi;
-    }
-    */
-
     return 0;
 }
 
@@ -220,106 +207,23 @@ int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
 {
     // TODO
 
-    /*
-    unsigned int i;
-    double init = 1.0 / (double) g->n;
-    for (i = 0; i < g->n; i++)
-    {
-        x[i] = init;
-    }
-
-    int iter = -1;
-    double ynorm;
-    double xnorm;
-    double error;
-
-    poweriterate(g, alpha, x, y);
-    iter++;
-
-    ynorm = 0.0;
-    for (i = 0; i < g->n; i++)
-    {
-        y[i] = y[i] - x[i];
-        if (y[i] > 0.0)
-        {
-            ynorm += y[i];
-        }
-        else
-        {
-            ynorm -= y[i];
-        }
-    }
-
-    fprintf(stderr, "%d: %e\n", iter, ynorm);
-
-    while (iter < maxit)
-    {
-        updateiterate(g, alpha, x, y);
-        iter++;
-
-        ynorm = 0.0;
-        for (i = 0; i < g->n; i++)
-        {
-            if (y[i] > 0.0)
-            {
-                ynorm += y[i];
-            }
-            else
-            {
-                ynorm -= y[i];
-            }
-        }
-       
-        xnorm = 0.0;
-        for (i = 0; i < g->n; i++)
-        {
-            if (x[i] > 0.0)
-            {
-                xnorm += x[i];
-            }
-            else
-            {
-                xnorm -= x[i];
-            }
-        }
-
-        error = ynorm / xnorm;
-
-        fprintf(stderr, "%d: %e\n", iter, error);
-
-        if (error < tol)
-        {
-            break;
-        }
-    }
-
-    for (i = 0; i < g->n; i++)
-    {
-        x[i] = x[i] / xnorm;
-    }
-    */
-
     return 0;
 }
 
 /* Computes the PageRank vector of a directed graph in
- * BADJ format using PowerIteration or UpdateIteration. */
+ * BADJBLK format using PowerIteration or UpdateIteration. */
 int main(int argc, char *argv[])
 {
     // Check arguments
     if (argc < 5)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] [badj|badjblk] [power|update] [maxiter]\n");
+        fprintf(stderr, "Usage: ./pagerank [graphfile] [badjblk] [power|update] [maxiter]\n");
         return 1;
     }
     
     // Get graph format
     char format;
-    if (!strcmp(argv[2], "badj"))
-    {
-        format = BADJ;
-    }
-    else if (!strcmp(argv[2], "badjblk"))
+    if (!strcmp(argv[2], "badjblk"))
     {
         format = BADJBLK;
     }

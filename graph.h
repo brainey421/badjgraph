@@ -5,7 +5,8 @@
 
 #define FILENAMELEN 1024
 #define BLOCKLEN    16777216
-        
+#define MAXBLKS     1024
+
 #define BADJ        0
 #define BADJBLK     1
 
@@ -42,6 +43,7 @@ struct graph
     pthread_t comp1;                    // computation thread 1
     pthread_t comp2;                    // computation thread 2
     pthread_attr_t attr;                // thread attributes
+    pthread_mutex_t lock;               // mutex lock
 
     unsigned long long n;               // number of nodes
     unsigned long long m;               // number of edges
@@ -58,18 +60,6 @@ struct node
 
 typedef struct graph graph;
 typedef struct node node;
-
-/* Arguments for powercompute */
-struct powercomputeargs
-{
-    graph *g;               // graph
-    double alpha;           // alpha
-    double *x;              // x
-    double *y;              // y
-    unsigned int threadno;  // thread number
-};
-
-typedef struct powercomputeargs powercomputeargs;
 
 int initialize(graph *g, char *filename, char format);              // initialize graph
 int partition(graph *g, char *dirname);                             // partition a BADJ graph into a BADJBLK graph

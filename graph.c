@@ -93,6 +93,9 @@ int initialize(graph *g, char *filename, char format)
     pthread_attr_init(&g->attr);
     pthread_attr_setdetachstate(&g->attr, PTHREAD_CREATE_JOINABLE);
 
+    // Initialize mutex lock
+    pthread_mutex_init(&g->lock, NULL);
+
     return 0;
 }
 
@@ -107,7 +110,14 @@ int partition(graph *g, char *dirname)
     unsigned int intsread;
     unsigned int val;
     unsigned int currnode = 0;
-    unsigned int firstnodes[512];    // assuming no more than 512 blocks
+    unsigned int firstnodes[MAXBLKS];
+
+    // Test graph format
+    if (g->format != BADJ)
+    {
+        fprintf(stderr, "Original graph must be in BADJ format.\n");
+        return 1;
+    }
 
     // For each block
     while (1)
@@ -122,8 +132,15 @@ int partition(graph *g, char *dirname)
             break;
         }
         
-        // Create file for next block
+        // Increment the number of blocks
         nblocks++;
+        if (nblocks > MAXBLKS)
+        {
+            fprintf(stderr, "Too many blocks to handle.\n");
+            return 1;
+        }
+
+        // Create file for next block
         sprintf(blockno, "%d", nblocks);
         strcpy(filename, dirname);
         strcat(filename, "/");
@@ -201,46 +218,41 @@ void *loadblocks(void *vg)
     graph *g = (graph *) vg;
     
     // Test graph format
-    if (g->format == BADJ)
+    if (g->format != BADJBLK)
     {
-        // TODO
-        
-        /*
-        unsigned int intsread;
-        intsread = fread(g->nextblock, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
-        g->nextblocklen = 0;
-
-        if (feof(g->stream))
-        {
-            fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
-        }
-
-        unsigned int val;
-        while (1)
-        {
-            val = g->nextblock[g->nextblocklen];
-
-            if (g->nextblocklen + 1 + val <= intsread)
-            {
-                g->nextblocklen = g->nextblocklen + 1 + val;
-            }
-            else
-            {
-                int extra = intsread - g->nextblocklen;
-                fseek(g->stream, -extra*sizeof(unsigned int), SEEK_CUR);
-                break;
-            }
-        }
-        */
+        fprintf(stderr, "Graph must be in BADJBLK format.\n");
+        return NULL;
     }
-    else if (g->format == BADJBLK)
-    {
-        // Declare variables
-        char graphfile[FILENAMELEN];
-        char blockno[128];
+
+    char graphfile[FILENAMELEN];
+    char blockno[128];
         
-        // Open next block file 1
-        sprintf(blockno, "%d", g->nextblockno1);
+    // Open next block file 1
+    sprintf(blockno, "%d", g->nextblockno1);
+    strcpy(graphfile, g->filename);
+    strcat(graphfile, "/");
+    strcat(graphfile, blockno);
+    g->stream = fopen(graphfile, "r");
+
+    // Check file stream
+    if (g->stream == NULL)
+    {
+        fprintf(stderr, "Could not open file.\n");
+        return NULL;
+    }
+
+    // Read next block 1
+    g->nextblocklen1 = fread(g->nextblock1, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
+    g->nextnode1 = g->firstnodes[g->nextblockno1];
+
+    // Close next block file 1
+    fclose(g->stream);
+
+    // Test whether there is a next block 2
+    if (g->nextblockno2 <= g->nblks)
+    {
+        // Open next block file 2
+        sprintf(blockno, "%d", g->nextblockno2);
         strcpy(graphfile, g->filename);
         strcat(graphfile, "/");
         strcat(graphfile, blockno);
@@ -250,44 +262,19 @@ void *loadblocks(void *vg)
         if (g->stream == NULL)
         {
             fprintf(stderr, "Could not open file.\n");
-            return NULL;
         }
 
-        // Read next block 1
-        g->nextblocklen1 = fread(g->nextblock1, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
-        g->nextnode1 = g->firstnodes[g->nextblockno1];
+        // Read next block 2
+        g->nextblocklen2 = fread(g->nextblock2, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
+        g->nextnode2 = g->firstnodes[g->nextblockno2];
 
-        // Close next block file 1
+        // Close next block file 2
         fclose(g->stream);
-
-        // Test whether there is a next block 2
-        if (g->nextblockno2 <= g->nblks)
-        {
-            // Open next block file 2
-            sprintf(blockno, "%d", g->nextblockno2);
-            strcpy(graphfile, g->filename);
-            strcat(graphfile, "/");
-            strcat(graphfile, blockno);
-            g->stream = fopen(graphfile, "r");
-
-            // Check file stream
-            if (g->stream == NULL)
-            {
-                fprintf(stderr, "Could not open file.\n");
-            }
-
-            // Read next block 2
-            g->nextblocklen2 = fread(g->nextblock2, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
-            g->nextnode2 = g->firstnodes[g->nextblockno2];
-
-            // Close next block file 2
-            fclose(g->stream);
-        }
-        else
-        {
-            // There is no next block 2
-            g->nextblocklen2 = 0;
-        }
+    }
+    else
+    {
+        // There is no next block 2
+        g->nextblocklen2 = 0;
     }
 
     return NULL;
@@ -298,6 +285,13 @@ int nextblocks(graph *g)
 {
     // Declare variables
     unsigned int *tmp;
+
+    // Test graph format
+    if (g->format != BADJBLK)
+    {
+        fprintf(stderr, "Graph must be in BADJBLK format.\n");
+        return 1;
+    }
 
     // Get block 1
     tmp = g->currblock1;
@@ -333,48 +327,51 @@ int nextblocks(graph *g)
 unsigned int nextnode(graph *g, node *v, unsigned int threadno)
 {
     // Test graph format
-    if (g->format == BADJ || g->format == BADJBLK)
+    if (g->format != BADJBLK)
     {
-        // Test whether this is computation thread 1 or 2
-        if (threadno == 1)
+        fprintf(stderr, "Graph must be in BADJBLK format.\n");
+        return -1;
+    }
+
+    // Test whether this is computation thread 1 or 2
+    if (threadno == 1)
+    {
+        // Test whether the block has more nodes
+        if (g->currblocki1 < g->currblocklen1)
         {
-            // Test whether the block has more nodes
-            if (g->currblocki1 < g->currblocklen1)
-            {
-                // Get next node
-                v->deg = g->currblock1[g->currblocki1];
-                g->currblocki1++;
-                v->adj = g->currblock1 + g->currblocki1;
-                g->currblocki1 = g->currblocki1 + v->deg;
-                g->currnode1++;
-                return (g->currnode1 - 1);
-            }
-            else
-            {
-                // No next node
-                return -1;
-            }
+            // Get next node
+            v->deg = g->currblock1[g->currblocki1];
+            g->currblocki1++;
+            v->adj = g->currblock1 + g->currblocki1;
+            g->currblocki1 = g->currblocki1 + v->deg;
+            g->currnode1++;
+            return (g->currnode1 - 1);
         }
-        else if (threadno == 2)
+        else
         {
-            // Test whether the block has more nodes
-            if (g->currblocki2 < g->currblocklen2)
-            {
-                // Get next node
-                v->deg = g->currblock2[g->currblocki2];
-                g->currblocki2++;
-                v->adj = g->currblock2 + g->currblocki2;
-                g->currblocki2 = g->currblocki2 + v->deg;
-                g->currnode2++;
-                return (g->currnode2 - 1);
-            }
-            else
-            {
-                // No next node
-                return -1;
-            }
+            // No next node
+            return -1;
         }
     }
+    else if (threadno == 2)
+    {
+        // Test whether the block has more nodes
+        if (g->currblocki2 < g->currblocklen2)
+        {
+            // Get next node
+            v->deg = g->currblock2[g->currblocki2];
+            g->currblocki2++;
+            v->adj = g->currblock2 + g->currblocki2;
+            g->currblocki2 = g->currblocki2 + v->deg;
+            g->currnode2++;
+            return (g->currnode2 - 1);
+        }
+        else
+        {
+            // No next node
+            return -1;
+        }
+    } 
 
     return 0;
 }
