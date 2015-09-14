@@ -43,9 +43,7 @@ void *powercompute(void *vpca)
             {
                 index = v.adj[j];
                 val = prob * x[i];
-                pthread_mutex_lock(&g->lock);
                 y[index] += val;
-                pthread_mutex_unlock(&g->lock);
             }
         }
     }

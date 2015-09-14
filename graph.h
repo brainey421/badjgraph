@@ -43,7 +43,6 @@ struct graph
     pthread_t comp1;                    // computation thread 1
     pthread_t comp2;                    // computation thread 2
     pthread_attr_t attr;                // thread attributes
-    pthread_mutex_t lock;               // mutex lock
 
     unsigned long long n;               // number of nodes
     unsigned long long m;               // number of edges

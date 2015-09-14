@@ -93,9 +93,6 @@ int initialize(graph *g, char *filename, char format)
     pthread_attr_init(&g->attr);
     pthread_attr_setdetachstate(&g->attr, PTHREAD_CREATE_JOINABLE);
 
-    // Initialize mutex lock
-    pthread_mutex_init(&g->lock, NULL);
-
     return 0;
 }
 
