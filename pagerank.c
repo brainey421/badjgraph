@@ -27,23 +27,22 @@ void *powercompute(void *vpca)
     unsigned int i, j;
     node v;
     double prob;
-    unsigned int index;
-    double val;
     while (1)
     {
-        if (nextnode(g, &v, threadno) == (unsigned int) -1)
+        // Get the next node
+        i = nextnode(g, &v, threadno);
+        if (i == (unsigned int) -1)
         {
             break;
         }
 
+        // Compute
         if (v.deg != 0)
         {
             prob = alpha / v.deg;
             for (j = 0; j < v.deg; j++)
             {
-                index = v.adj[j];
-                val = prob * x[i];
-                y[index] += val;
+                y[v.adj[j]] += prob * x[i];
             }
         }
     }
@@ -52,13 +51,10 @@ void *powercompute(void *vpca)
 }
 
 /* Perform one iteration of PowerIteration. */
-int poweriterate(graph *g, double alpha, double *x, double *y)
+int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
 {
     // Declare variables
-    node v;
     unsigned int i;
-    double prob;
-    unsigned int j;
     char firstloop = 1;
     powercomputeargs pca1;
     powercomputeargs pca2;
@@ -66,7 +62,8 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
     // Initialize y
     for (i = 0; i < g->n; i++)
     {
-        y[i] = 0.0;
+        y1[i] = 0.0;
+        // y2[i] = 0.0;
     }
 
     while (1)
@@ -79,7 +76,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
 
         // Dispatch reader thread
         pthread_create(&g->reader, &g->attr, loadblocks, (void *) g);
-        
+
         // Check if iteration is over
         if (!firstloop && g->currblockno1 == 1)
         {
@@ -90,7 +87,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
         pca1.g = g;
         pca1.alpha = alpha;
         pca1.x = x;
-        pca1.y = y;
+        pca1.y = y1;
         pca1.threadno = 1;
         pthread_create(&g->comp1, &g->attr, powercompute, (void *) &pca1);
     
@@ -98,7 +95,8 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
         pca2.g = g;
         pca2.alpha = alpha;
         pca2.x = x;
-        pca2.y = y;
+        pca2.y = y1;
+        // pca2.y = y2;
         pca2.threadno = 2;
         pthread_create(&g->comp2, &g->attr, powercompute, (void *) &pca2);
 
@@ -110,23 +108,29 @@ int poweriterate(graph *g, double alpha, double *x, double *y)
         firstloop = 0;
     }
 
+    // Add y2 to y1
+    // for (i = 0; i < g->n; i++)
+    // {
+    //     y1[i] += y2[i];
+    // }
+
     // Distribute remaining weight among the nodes
     double remainder = 1.0;
     for (i = 0; i < g->n; i++)
     {
-        remainder -= y[i];
+        remainder -= y1[i];
     }
     remainder /= (double) g->n;
     for (i = 0; i < g->n; i++)
     {
-        y[i] += remainder;
+        y1[i] += remainder;
     }
 
     return 0;
 }
 
 /* Perform PowerIteration. */
-int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
+int power(graph *g, double alpha, double tol, int maxit, double *x, double *y1, double *y2)
 {
     // Save a pointer to the original x
     double *xoriginal = x;
@@ -152,19 +156,19 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
     while (iter < maxit)
     {
         // Perform iteration
-        poweriterate(g, alpha, x, y);
+        poweriterate(g, alpha, x, y1, y2);
         iter++;
 
         // Swap x and y
         tmp = x;
-        x = y;
-        y = tmp;
+        x = y1;
+        y1 = tmp;
 
         // Compute residual norm
         norm = 0.0;
         for (i = 0; i < g->n; i++)
         {
-            diff = x[i] - y[i];
+            diff = x[i] - y1[i];
             if (diff > 0.0)
             {
                 norm += diff;
@@ -194,14 +198,14 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y)
     return 0;
 }
 
-int updateiterate(graph *g, double alpha, double *x, double *y)
+int updateiterate(graph *g, double alpha, double *x, double *y1, double *y2)
 {
     // TODO
     
     return 0;
 }
 
-int update(graph *g, double alpha, double tol, int maxit, double *x, double *y)
+int update(graph *g, double alpha, double tol, int maxit, double *x, double *y1, double *y2)
 {
     // TODO
 
@@ -249,25 +253,28 @@ int main(int argc, char *argv[])
 
     // Initialize PageRank vectors
     double *x = malloc(g.n * sizeof(double));
-    double *y = malloc(g.n * sizeof(double));
-    
+    double *y1 = malloc(g.n * sizeof(double));
+    // double *y2 = malloc(g.n * sizeof(double));
+    double *y2 = NULL;
+
     // Test which algorithm to use
     if (!strcmp(argv[3], "power"))
     {
         // Perform PowerIteration
-        power(&g, alpha, tol, maxit, x, y);
+        power(&g, alpha, tol, maxit, x, y1, y2);
     }
     else if (!strcmp(argv[3], "update"))
     {
         // Perform UpdateIteration
-        update(&g, alpha, tol, maxit, x, y);
+        update(&g, alpha, tol, maxit, x, y1, y2);
     }
     else
     {
         // Invalid algorithm
         fprintf(stderr, "Unknown algorithm.\n");
         free(x);
-        free(y);
+        free(y1);
+        // free(y2);
         return 1;
     }
 
@@ -281,7 +288,8 @@ int main(int argc, char *argv[])
    
     // Destroy PageRank vectors
     free(x);
-    free(y);
+    free(y1);
+    // free(y2);
 
     return 0;
 }

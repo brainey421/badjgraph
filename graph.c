@@ -366,7 +366,7 @@ unsigned int nextnode(graph *g, node *v, unsigned int threadno)
         else
         {
             // No next node
-            return -1;
+            return (unsigned int) -1;
         }
     } 
 
