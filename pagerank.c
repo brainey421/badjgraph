@@ -63,7 +63,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
     for (i = 0; i < g->n; i++)
     {
         y1[i] = 0.0;
-        // y2[i] = 0.0;
+        y2[i] = 0.0;
     }
 
     while (1)
@@ -95,8 +95,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
         pca2.g = g;
         pca2.alpha = alpha;
         pca2.x = x;
-        pca2.y = y1;
-        // pca2.y = y2;
+        pca2.y = y2;
         pca2.threadno = 2;
         pthread_create(&g->comp2, &g->attr, powercompute, (void *) &pca2);
 
@@ -109,11 +108,11 @@ int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
     }
 
     // Add y2 to y1
-    // for (i = 0; i < g->n; i++)
-    // {
-    //     y1[i] += y2[i];
-    // }
-
+    for (i = 0; i < g->n; i++)
+    {
+        y1[i] += y2[i];
+    }
+    
     // Distribute remaining weight among the nodes
     double remainder = 1.0;
     for (i = 0; i < g->n; i++)
@@ -254,8 +253,7 @@ int main(int argc, char *argv[])
     // Initialize PageRank vectors
     double *x = malloc(g.n * sizeof(double));
     double *y1 = malloc(g.n * sizeof(double));
-    // double *y2 = malloc(g.n * sizeof(double));
-    double *y2 = NULL;
+    double *y2 = malloc(g.n * sizeof(double));
 
     // Test which algorithm to use
     if (!strcmp(argv[3], "power"))
@@ -274,7 +272,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Unknown algorithm.\n");
         free(x);
         free(y1);
-        // free(y2);
+        free(y2);
         return 1;
     }
 
@@ -289,7 +287,7 @@ int main(int argc, char *argv[])
     // Destroy PageRank vectors
     free(x);
     free(y1);
-    // free(y2);
+    free(y2);
 
     return 0;
 }

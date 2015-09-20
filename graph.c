@@ -240,7 +240,7 @@ void *loadblocks(void *vg)
 
     // Read next block 1
     g->nextblocklen1 = fread(g->nextblock1, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
-    g->nextnode1 = g->firstnodes[g->nextblockno1];
+    g->nextnode1 = g->firstnodes[g->nextblockno1-1];
 
     // Close next block file 1
     fclose(g->stream);
@@ -263,7 +263,7 @@ void *loadblocks(void *vg)
 
         // Read next block 2
         g->nextblocklen2 = fread(g->nextblock2, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
-        g->nextnode2 = g->firstnodes[g->nextblockno2];
+        g->nextnode2 = g->firstnodes[g->nextblockno2-1];
 
         // Close next block file 2
         fclose(g->stream);
