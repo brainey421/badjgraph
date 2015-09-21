@@ -60,6 +60,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
     powercomputeargs pca2;
 
     // Initialize y
+    #pragma omp parallel for
     for (i = 0; i < g->n; i++)
     {
         y1[i] = 0.0;
@@ -108,6 +109,7 @@ int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
     }
 
     // Add y2 to y1
+    #pragma omp parallel for
     for (i = 0; i < g->n; i++)
     {
         y1[i] += y2[i];
@@ -115,11 +117,13 @@ int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
     
     // Distribute remaining weight among the nodes
     double remainder = 1.0;
+    #pragma omp parallel for reduction(-:remainder)
     for (i = 0; i < g->n; i++)
     {
         remainder -= y1[i];
     }
     remainder /= (double) g->n;
+    #pragma omp parallel for
     for (i = 0; i < g->n; i++)
     {
         y1[i] += remainder;
@@ -140,6 +144,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y1, 
     // Initialize x to e/n
     unsigned int i;
     double init = 1.0 / (double) g->n;
+    #pragma omp parallel for
     for (i = 0; i < g->n; i++)
     {
         x[i] = init;
@@ -148,7 +153,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y1, 
     // Declare variables
     int iter = 0;
     double norm;
-    double diff;
     double *tmp;
 
     // For each iteration
@@ -157,7 +161,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y1, 
         // Perform iteration
         poweriterate(g, alpha, x, y1, y2);
         iter++;
-
+        
         // Swap x and y
         tmp = x;
         x = y1;
@@ -165,17 +169,10 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y1, 
 
         // Compute residual norm
         norm = 0.0;
+        #pragma omp parallel for reduction(+:norm)
         for (i = 0; i < g->n; i++)
         {
-            diff = x[i] - y1[i];
-            if (diff > 0.0)
-            {
-                norm += diff;
-            }
-            else
-            {
-                norm -= diff;
-            }
+            norm += fabs(x[i] - y1[i]);
         }
         
         // Print residual norm
@@ -189,6 +186,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y1, 
     }
 
     // Store PageRank vector in the original x
+    #pragma omp parallel for
     for (i = 0; i < g->n; i++)
     {
         xoriginal[i] = x[i];
