@@ -69,21 +69,6 @@ int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
 
     while (1)
     {
-        // Wait for reader thread
-        pthread_join(g->reader, NULL);
-
-        // Get next blocks
-        nextblocks(g);
-
-        // Dispatch reader thread
-        pthread_create(&g->reader, &g->attr, loadblocks, (void *) g);
-
-        // Check if iteration is over
-        if (!firstloop && g->currblockno1 == 1)
-        {
-            break;
-        }
-
         // Dispatch computation thread 1
         pca1.g = g;
         pca1.alpha = alpha;
@@ -103,6 +88,21 @@ int poweriterate(graph *g, double alpha, double *x, double *y1, double *y2)
         // Wait for computation threads
         pthread_join(g->comp1, NULL);
         pthread_join(g->comp2, NULL);
+                
+        // Wait for reader thread
+        pthread_join(g->reader, NULL);
+
+        // Get next blocks
+        nextblocks(g);
+
+        // Dispatch reader thread
+        pthread_create(&g->reader, &g->attr, loadblocks, (void *) g);
+
+        // Check if iteration is over
+        if (!firstloop && g->currblockno1 == 1)
+        {
+            break;
+        }
 
         // The next loop is not the first loop
         firstloop = 0;
@@ -154,6 +154,15 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y1, 
     int iter = 0;
     double norm;
     double *tmp;
+
+    // Wait for reader thread
+    pthread_join(g->reader, NULL);
+
+    // Get next blocks
+    nextblocks(g);
+
+    // Dispatch reader thread
+    pthread_create(&g->reader, &g->attr, loadblocks, (void *) g);
 
     // For each iteration
     while (iter < maxit)
