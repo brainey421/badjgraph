@@ -251,7 +251,7 @@ void *loadblocks(void *vg)
         // Close next block file
         fclose(g->stream);
     }
-        
+
     return NULL;
 }
 

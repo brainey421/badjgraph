@@ -46,7 +46,7 @@ void *powercompute(void *vpca)
             }
         }
     }
-
+    
     return NULL;
 }
 
@@ -137,9 +137,6 @@ int poweriterate(graph *g, double alpha, double *x, double *y[])
 /* Perform PowerIteration. */
 int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
 {
-    // Save a pointer to the original x
-    double *xoriginal = x;
-
     // Dispatch reader thread
     pthread_create(&g->reader, &g->attr, loadblocks, (void *) g);
 
@@ -155,7 +152,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
     // Declare variables
     int iter = 0;
     double norm;
-    double *tmp;
 
     // Wait for reader thread
     pthread_join(g->reader, NULL);
@@ -173,11 +169,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
         poweriterate(g, alpha, x, y);
         iter++;
         
-        // Swap x and y
-        tmp = x;
-        x = y[0];
-        y[0] = tmp;
-
         // Compute residual norm
         norm = 0.0;
         #pragma omp parallel for reduction(+:norm)
@@ -188,19 +179,19 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
         
         // Print residual norm
         fprintf(stderr, "%d: %e\n", iter, norm);
+        
+        // Copy y to x
+        #pragma omp parallel for
+        for (i = 0; i < g->n; i++)
+        {
+            x[i] = y[0][i];
+        }
 
         // Stop iterating if residual norm is within tolerance
         if (norm < tol)
         {
             break;
         }
-    }
-
-    // Store PageRank vector in the original x
-    #pragma omp parallel for
-    for (i = 0; i < g->n; i++)
-    {
-        xoriginal[i] = x[i];
     }
 
     return 0;
