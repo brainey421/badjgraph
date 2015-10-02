@@ -14,7 +14,7 @@ int initialize(graph *g, char *filename, char format)
     g->format = format;
     
     // Test graph format
-    if (g->format == BADJ)
+    if (g->format == BADJ || g->format == BADJT)
     {
         // Open BADJ file
         strcpy(g->filename, filename);    
@@ -105,9 +105,9 @@ int partition(graph *g, char *dirname)
     unsigned int firstnodes[MAXBLKS];
 
     // Test graph format
-    if (g->format != BADJ)
+    if (g->format != BADJ && g->format != BADJT)
     {
-        fprintf(stderr, "Original graph must be in BADJ format.\n");
+        fprintf(stderr, "Original graph must be in BADJ or BADJT format.\n");
         return 1;
     }
 
@@ -203,12 +203,115 @@ int partition(graph *g, char *dirname)
     return 0;
 }
 
+/* Transpose a BADJ graph into a BADJT graph. */
+int transpose(graph *g, char *filename)
+{
+    // Declare variables
+    unsigned int i;
+    unsigned int j;
+    unsigned int deg;
+    unsigned int *adj;
+    unsigned int *degt;
+    unsigned int *currdegt;
+    unsigned int **adjt;
+    FILE *out;
+
+    // Test graph format
+    if (g->format != BADJ)
+    {
+        fprintf(stderr, "Original graph must be in BADJ format.\n");
+        return 1;
+    }
+
+    // Allocate space for degrees in transpose
+    degt = malloc(sizeof(unsigned int) * g->n);
+    currdegt = malloc(sizeof(unsigned int) * g->n);
+    for (i = 0; i < g->n; i++)
+    {
+        degt[i] = 0;
+        currdegt[i] = 0;
+    }
+
+    // For each node
+    for (i = 0; i < g->n; i++)
+    {
+        // Read adjacency list
+        fread(&deg, sizeof(unsigned int), 1, g->stream);
+        adj = malloc(sizeof(unsigned int) * deg);
+        fread(adj, sizeof(unsigned int), deg, g->stream);
+
+        // Increment degrees in transpose
+        for (j = 0; j < deg; j++)
+        {
+            degt[adj[j]]++;
+        }
+        free(adj);
+    }
+
+    // Allocate space for adjacency list in transpose
+    adjt = malloc(sizeof(unsigned int *) * g->n);
+    for (i = 0; i < g->n; i++)
+    {
+        adjt[i] = malloc(sizeof(unsigned int) * degt[i]);
+    }
+
+    // Rewind graph
+    fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
+
+    // For each node
+    for (i = 0; i < g->n; i++)
+    {
+        // Read adjacency list
+        fread(&deg, sizeof(unsigned int), 1, g->stream);
+        adj = malloc(sizeof(unsigned int) * deg);
+        fread(adj, sizeof(unsigned int), deg, g->stream);
+
+        // Update adjacency list in transpose
+        for (j = 0; j < deg; j++)
+        {
+            adjt[adj[j]][currdegt[adj[j]]] = i;
+            currdegt[adj[j]]++;
+        }
+        free(adj);
+    }
+
+    // Create BADJT file
+    out = fopen(filename, "w");
+
+    // Write number of nodes and edges
+    fwrite(&g->n, sizeof(unsigned long long), 1, out);
+    fwrite(&g->m, sizeof(unsigned long long), 1, out);
+    
+    // For each node
+    for (i = 0; i < g->n; i++)
+    {
+        // Write degree in transpose
+        fwrite(&degt[i], sizeof(unsigned int), 1, out);
+
+        // Write each adjacent node in transpose
+        for (j = 0; j < degt[i]; j++)
+        {
+            fwrite(&adjt[i][j], sizeof(unsigned int), 1, out);
+        }
+    }
+
+    // Close BADJT file
+    fclose(out);
+    
+    // Free variables
+    free(degt);
+    free(currdegt);
+    free(adjt);
+
+    return 0;
+}
+
 /* Read the next blocks of the graph. */
 void *loadblocks(void *vg)
 {
     // Get argument
     graph *g = (graph *) vg;
-    
+                
     // Test graph format
     if (g->format != BADJBLK)
     {

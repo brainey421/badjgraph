@@ -1,12 +1,12 @@
 #include "graph.h"
 
-/* Partition a BADJ/BADJT graph into a BADJBLK/BADJTBLK graph. */
+/* Transpose a BADJ graph into a BADJT graph. */
 int main(int argc, char *argv[])
 {
     // Check arguments
     if (argc < 4)
     {
-        fprintf(stderr, "Usage: ./partition [graphfile] [badj|badjt] [outdirectory]\n");
+        fprintf(stderr, "Usage: ./transpose [graphfile] badj [outdirectory]\n");
         return 1;
     }
     
@@ -15,10 +15,6 @@ int main(int argc, char *argv[])
     if (!strcmp(argv[2], "badj"))
     {
         format = BADJ;
-    }
-    else if (!strcmp(argv[2], "badjt"))
-    {
-        format = BADJT;
     }
     else
     {
@@ -37,8 +33,8 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Nodes: %llu\n", g.n);
     fprintf(stderr, "Edges: %llu\n\n", g.m);
 
-    // Partition graph
-    partition(&g, argv[3]);
+    // Transpose graph
+    transpose(&g, argv[3]);
 
     return 0;
 }
