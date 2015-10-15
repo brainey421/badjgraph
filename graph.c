@@ -14,7 +14,7 @@ int initialize(graph *g, char *filename, char format)
     g->format = format;
     
     // Test graph format
-    if (g->format == BADJ || g->format == BADJT)
+    if (g->format == BADJ)
     {
         // Open BADJ file
         strcpy(g->filename, filename);    
@@ -105,9 +105,9 @@ int partition(graph *g, char *dirname)
     unsigned int firstnodes[MAXBLKS];
 
     // Test graph format
-    if (g->format != BADJ && g->format != BADJT)
+    if (g->format != BADJ)
     {
-        fprintf(stderr, "Original graph must be in BADJ or BADJT format.\n");
+        fprintf(stderr, "Original graph must be in BADJ format.\n");
         return 1;
     }
 
@@ -203,7 +203,7 @@ int partition(graph *g, char *dirname)
     return 0;
 }
 
-/* Transpose a BADJ graph into a BADJT graph. */
+/* Transpose a BADJ graph into a BADJTBLK graph. */
 int transpose(graph *g, char *filename)
 {
     // Declare variables

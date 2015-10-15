@@ -1,12 +1,12 @@
 #include "graph.h"
 
-/* Partition a BADJ/BADJT graph into a BADJBLK/BADJTBLK graph. */
+/* Partition a BADJ graph into a BADJBLK graph. */
 int main(int argc, char *argv[])
 {
     // Check arguments
     if (argc < 4)
     {
-        fprintf(stderr, "Usage: ./partition [graphfile] [badj|badjt] [outdirectory]\n");
+        fprintf(stderr, "Usage: ./partition [graphfile] badj [outdirectory]\n");
         return 1;
     }
     
@@ -15,10 +15,6 @@ int main(int argc, char *argv[])
     if (!strcmp(argv[2], "badj"))
     {
         format = BADJ;
-    }
-    else if (!strcmp(argv[2], "badjt"))
-    {
-        format = BADJT;
     }
     else
     {

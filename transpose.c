@@ -1,6 +1,6 @@
 #include "graph.h"
 
-/* Transpose a BADJ graph into a BADJT graph. */
+/* Transpose a BADJ graph into a BADJTBLK graph. */
 int main(int argc, char *argv[])
 {
     // Check arguments
