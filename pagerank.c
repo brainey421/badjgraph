@@ -65,7 +65,6 @@ int poweriterate(graph *g, double alpha, double *x, double *y[])
     // Initialize y
     for (i = 0; i < NTHREADS; i++)
     {
-        #pragma omp parallel for
         for (j = 0; j < g->n; j++)
         {
             y[i][j] = 0.0;
@@ -111,10 +110,9 @@ int poweriterate(graph *g, double alpha, double *x, double *y[])
     }
 
     // Add y vectors
-    #pragma omp parallel for
     for (i = 1; i < NTHREADS; i++)
     {
-        for (j = 1; j < g->n; j++)
+        for (j = 0; j < g->n; j++)
         {
             y[0][j] += y[i][j];
         }
@@ -122,13 +120,11 @@ int poweriterate(graph *g, double alpha, double *x, double *y[])
     
     // Distribute remaining weight among the nodes
     double remainder = 1.0;
-    #pragma omp parallel for reduction(-:remainder)
     for (i = 0; i < g->n; i++)
     {
         remainder -= y[0][i];
     }
     remainder /= (double) g->n;
-    #pragma omp parallel for
     for (i = 0; i < g->n; i++)
     {
         y[0][i] += remainder;
@@ -146,7 +142,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
     // Initialize x to e/n
     unsigned int i;
     double init = 1.0 / (double) g->n;
-    #pragma omp parallel for
     for (i = 0; i < g->n; i++)
     {
         x[i] = init;
@@ -174,7 +169,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
         
         // Compute residual norm
         norm = 0.0;
-        #pragma omp parallel for reduction(+:norm)
         for (i = 0; i < g->n; i++)
         {
             norm += fabs(x[i] - y[0][i]);
@@ -184,7 +178,6 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
         fprintf(stderr, "%d: %e\n", iter, norm);
         
         // Copy y to x
-        #pragma omp parallel for
         for (i = 0; i < g->n; i++)
         {
             x[i] = y[0][i];
