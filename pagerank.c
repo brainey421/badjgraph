@@ -42,7 +42,10 @@ void *powercompute(void *vpca)
             prob = alpha / v.deg;
             for (j = 0; j < v.deg; j++)
             {
-                y[v.adj[j]] += prob * x[i];
+                if (g->format == BADJBLK)
+                {
+                    y[v.adj[j]] += prob * x[i];
+                }
             }
         }
     }
@@ -204,7 +207,7 @@ int main(int argc, char *argv[])
     // Check arguments
     if (argc < 5)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] badjblk power [maxiter]\n");
+        fprintf(stderr, "Usage: ./pagerank [graphfile] [badjblk|badjtblk] power [maxiter]\n");
         return 1;
     }
     
@@ -213,6 +216,10 @@ int main(int argc, char *argv[])
     if (!strcmp(argv[2], "badjblk"))
     {
         format = BADJBLK;
+    }
+    else if (!strcmp(argv[2], "badjtblk"))
+    {
+        format = BADJTBLK;
     }
     else
     {
