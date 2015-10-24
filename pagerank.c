@@ -1,12 +1,14 @@
 #include "graph.h"
 
+#define FLTYPE float
+
 /* Arguments for powercompute */
 struct powercomputeargs
 {
     graph *g;               // graph
-    double alpha;           // alpha
-    double *x;              // x
-    double *y;              // y
+    FLTYPE alpha;           // alpha
+    FLTYPE *x;              // x
+    FLTYPE *y;              // y
     unsigned int threadno;  // thread number
 };
 
@@ -18,19 +20,17 @@ void *powercompute(void *vpca)
     // Get arguments
     powercomputeargs *pca = (powercomputeargs *) vpca;
     graph *g = pca->g;
-    double alpha = pca->alpha;
-    double *x = pca->x;
-    double *y = pca->y;
+    FLTYPE alpha = pca->alpha;
+    FLTYPE *x = pca->x;
+    FLTYPE *y = pca->y;
     unsigned int threadno = pca->threadno;
 
     // Perform PowerIteration computation
-    unsigned int i, j;
-    node v;
-    double prob;
     while (1)
     {
         // Get the next node
-        i = nextnode(g, &v, threadno);
+        node v;
+        unsigned int i = nextnode(g, &v, threadno);
         if (i == (unsigned int) -1)
         {
             break;
@@ -39,13 +39,33 @@ void *powercompute(void *vpca)
         // Compute
         if (v.deg != 0)
         {
-            prob = alpha / v.deg;
-            for (j = 0; j < v.deg; j++)
+            FLTYPE update = alpha * x[i] / v.deg;
+            unsigned int j;
+            for (j = 3; j < v.deg; j += 4)
             {
-                if (g->format == BADJBLK)
-                {
-                    y[v.adj[j]] += prob * x[i];
-                }
+                unsigned int vadj1 = v.adj[j-3];
+                unsigned int vadj2 = v.adj[j-2];
+                unsigned int vadj3 = v.adj[j-1];
+                unsigned int vadj4 = v.adj[j];
+
+                FLTYPE y1 = y[vadj1];
+                FLTYPE y2 = y[vadj2];
+                FLTYPE y3 = y[vadj3];
+                FLTYPE y4 = y[vadj4];
+
+                y[vadj1] = y1 + update;
+                y[vadj2] = y2 + update;
+                y[vadj3] = y3 + update;
+                y[vadj4] = y4 + update;
+
+                // y[v.adj[j-3]] += update;
+                // y[v.adj[j-2]] += update;
+                // y[v.adj[j-1]] += update;
+                // y[v.adj[j]] += update;
+            }
+            for (j = j - 3; j < v.deg; j++)
+            {
+                y[v.adj[j]] += update;
             }
         }
     }
@@ -54,7 +74,7 @@ void *powercompute(void *vpca)
 }
 
 /* Perform one iteration of PowerIteration. */
-int poweriterate(graph *g, double alpha, double *x, double *y[])
+int poweriterate(graph *g, FLTYPE alpha, FLTYPE *x, FLTYPE *y[])
 {
     // Declare variables
     unsigned int i;
@@ -119,12 +139,12 @@ int poweriterate(graph *g, double alpha, double *x, double *y[])
     }
     
     // Distribute remaining weight among the nodes
-    double remainder = 1.0;
+    FLTYPE remainder = 1.0;
     for (i = 0; i < g->n; i++)
     {
         remainder -= y[0][i];
     }
-    remainder /= (double) g->n;
+    remainder /= (FLTYPE) g->n;
     for (i = 0; i < g->n; i++)
     {
         y[0][i] += remainder;
@@ -134,14 +154,14 @@ int poweriterate(graph *g, double alpha, double *x, double *y[])
 }
 
 /* Perform PowerIteration. */
-int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
+int power(graph *g, FLTYPE alpha, FLTYPE tol, int maxit, FLTYPE *x, FLTYPE *y[])
 {
     // Dispatch reader thread
     pthread_create(&g->reader, &g->attr, loadblocks, (void *) g);
 
     // Initialize x to e/n
     unsigned int i;
-    double init = 1.0 / (double) g->n;
+    FLTYPE init = 1.0 / (FLTYPE) g->n;
     for (i = 0; i < g->n; i++)
     {
         x[i] = init;
@@ -149,7 +169,7 @@ int power(graph *g, double alpha, double tol, int maxit, double *x, double *y[])
 
     // Declare variables
     int iter = 0;
-    double norm;
+    FLTYPE norm;
 
     // Wait for reader thread
     pthread_join(g->reader, NULL);
@@ -200,7 +220,7 @@ int main(int argc, char *argv[])
     // Check arguments
     if (argc < 5)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] [badjblk|badjtblk] power [maxiter]\n");
+        fprintf(stderr, "Usage: ./pagerank [graphfile] badjblk power [maxiter]\n");
         return 1;
     }
     
@@ -209,10 +229,6 @@ int main(int argc, char *argv[])
     if (!strcmp(argv[2], "badjblk"))
     {
         format = BADJBLK;
-    }
-    else if (!strcmp(argv[2], "badjtblk"))
-    {
-        format = BADJTBLK;
     }
     else
     {
@@ -235,16 +251,16 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Edges: %llu\n\n", g.m);
 
     // Set PageRank parameters
-    double alpha = 0.85;
-    double tol = 1e-8;
+    FLTYPE alpha = 0.85;
+    FLTYPE tol = 1e-8;
     int maxit = atoi(argv[4]);
 
     // Initialize PageRank vectors
-    double *x = malloc(g.n * sizeof(double));
-    double *y[NTHREADS];
+    FLTYPE *x = malloc(g.n * sizeof(FLTYPE));
+    FLTYPE *y[NTHREADS];
     for (i = 0; i < NTHREADS; i++)
     {
-        y[i] = malloc(g.n * sizeof(double));
+        y[i] = malloc(g.n * sizeof(FLTYPE));
     }
 
     // Test which algorithm to use
