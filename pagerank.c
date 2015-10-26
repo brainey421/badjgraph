@@ -41,29 +41,41 @@ void *powercompute(void *vpca)
         {
             FLTYPE update = alpha * x[i] / v.deg;
             unsigned int j;
-            for (j = 3; j < v.deg; j += 4)
+            for (j = 7; j < v.deg; j += 8)
             {
-                unsigned int vadj1 = v.adj[j-3];
-                unsigned int vadj2 = v.adj[j-2];
-                unsigned int vadj3 = v.adj[j-1];
-                unsigned int vadj4 = v.adj[j];
+                unsigned int vadj1 = v.adj[j-7];
+                unsigned int vadj2 = v.adj[j-6];
+                unsigned int vadj3 = v.adj[j-5];
+                unsigned int vadj4 = v.adj[j-4];
+                unsigned int vadj5 = v.adj[j-3];
+                unsigned int vadj6 = v.adj[j-2];
+                unsigned int vadj7 = v.adj[j-1];
+                unsigned int vadj8 = v.adj[j];
 
                 FLTYPE y1 = y[vadj1];
                 FLTYPE y2 = y[vadj2];
                 FLTYPE y3 = y[vadj3];
                 FLTYPE y4 = y[vadj4];
+                FLTYPE y5 = y[vadj5];
+                FLTYPE y6 = y[vadj6];
+                FLTYPE y7 = y[vadj7];
+                FLTYPE y8 = y[vadj8];
 
                 y[vadj1] = y1 + update;
                 y[vadj2] = y2 + update;
                 y[vadj3] = y3 + update;
                 y[vadj4] = y4 + update;
+                y[vadj5] = y5 + update;
+                y[vadj6] = y6 + update;
+                y[vadj7] = y7 + update;
+                y[vadj8] = y8 + update;
 
                 // y[v.adj[j-3]] += update;
                 // y[v.adj[j-2]] += update;
                 // y[v.adj[j-1]] += update;
                 // y[v.adj[j]] += update;
             }
-            for (j = j - 3; j < v.deg; j++)
+            for (j = j - 7; j < v.deg; j++)
             {
                 y[v.adj[j]] += update;
             }
