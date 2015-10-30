@@ -6,7 +6,7 @@ int main(int argc, char *argv[])
 {
     if (argc < 4)
     {
-        fprintf(stderr, "Usage: ./readedges [graphfile] [badj|badjblk|badjtblk] [niterations]\n");
+        fprintf(stderr, "Usage: ./readedges [graphfile] [badj|badjblk] [niterations]\n");
         return 1;
     }
     

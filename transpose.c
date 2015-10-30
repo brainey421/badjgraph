@@ -1,12 +1,12 @@
 #include "graph.h"
 
-/* Transpose a BADJ graph into a BADJTBLK graph. */
+/* Transpose a BADJ graph. */
 int main(int argc, char *argv[])
 {
     // Check arguments
     if (argc < 4)
     {
-        fprintf(stderr, "Usage: ./transpose [graphfile] badj [outdirectory]\n");
+        fprintf(stderr, "Usage: ./transpose [graphfile] badj [outfile]\n");
         return 1;
     }
     

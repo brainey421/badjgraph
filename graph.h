@@ -11,7 +11,6 @@
 
 #define BADJ        0
 #define BADJBLK     1
-#define BADJTBLK    2
 
 /* Graph in BADJ/BADJBLK format */
 struct graph
@@ -52,7 +51,7 @@ typedef struct node node;
 
 int initialize(graph *g, char *filename, char format);              // initialize graph
 int partition(graph *g, char *dirname);                             // partition a BADJ graph into a BADJBLK graph
-int transpose(graph *g, char *dirname);                             // transpose a BADJ graph into a BADJTBLK graph
+int transpose(graph *g, char *dirname);                             // transpose a BADJ graph
 void *loadblocks(void *vg);                                         // read the next blocks in the graph
 int nextblocks(graph *g);                                           // get the next blocks of the graph
 unsigned int nextnode(graph *g, node *v, unsigned int threadno);    // get next node in the graph

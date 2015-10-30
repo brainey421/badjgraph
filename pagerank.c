@@ -69,11 +69,6 @@ void *powercompute(void *vpca)
                 y[vadj6] = y6 + update;
                 y[vadj7] = y7 + update;
                 y[vadj8] = y8 + update;
-
-                // y[v.adj[j-3]] += update;
-                // y[v.adj[j-2]] += update;
-                // y[v.adj[j-1]] += update;
-                // y[v.adj[j]] += update;
             }
             for (j = j - 7; j < v.deg; j++)
             {

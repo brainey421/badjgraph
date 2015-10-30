@@ -203,7 +203,7 @@ int partition(graph *g, char *dirname)
     return 0;
 }
 
-/* Transpose a BADJ graph into a BADJTBLK graph. */
+/* Transpose a BADJ graph. */
 int transpose(graph *g, char *filename)
 {
     // Declare variables
@@ -275,7 +275,7 @@ int transpose(graph *g, char *filename)
         free(adj);
     }
 
-    // Create BADJT file
+    // Create BADJ file
     out = fopen(filename, "w");
 
     // Write number of nodes and edges
@@ -295,7 +295,7 @@ int transpose(graph *g, char *filename)
         }
     }
 
-    // Close BADJT file
+    // Close BADJ file
     fclose(out);
     
     // Free variables
