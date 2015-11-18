@@ -1,4 +1,4 @@
-LDFLAGS += -pthread
+LDFLAGS += -fopenmp
 CFLAGS += -O3 -Wall -D_LARGEFILE64_SOURCE
 
 all: pagerank readedges partition transpose

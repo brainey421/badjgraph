@@ -74,19 +74,12 @@ int initialize(graph *g, char *filename, char format)
     for (i = 0; i < NTHREADS; i++)
     {
         // Current blocks
-        g->currblock[i] = malloc(BLOCKLEN);
-        g->currblocklen[i] = 0;
-        g->currblocki[i] = 0;
-
-        // Next blocks
-        g->nextblock[i] = malloc(BLOCKLEN);
-        g->nextblocklen[i] = 0;
-        g->nextblockno[i] = i + 1;
+        g->currblockfile[i] = NULL;
+        g->currblockno[i] = i - NTHREADS + 1;
     }
 
-    // Initialize thread attributes
-    pthread_attr_init(&g->attr);
-    pthread_attr_setdetachstate(&g->attr, PTHREAD_CREATE_JOINABLE);
+    // Set number of threads
+    omp_set_num_threads(NTHREADS);
 
     return 0;
 }
@@ -95,14 +88,12 @@ int initialize(graph *g, char *filename, char format)
 int partition(graph *g, char *dirname)
 {
     // Declare variables
-    FILE *out;
-    char filename[FILENAMELEN];
-    char blockno[128];
     unsigned int nblocks = 0;
-    unsigned int intsread;
-    unsigned int val;
     unsigned int currnode = 0;
     unsigned int firstnodes[MAXBLKS];
+    unsigned int *nextblock = malloc(BLOCKLEN);
+    char filename[FILENAMELEN];
+    FILE *out;
 
     // Test graph format
     if (g->format != BADJ)
@@ -115,8 +106,8 @@ int partition(graph *g, char *dirname)
     while (1)
     {
         // Read maximal next block
-        intsread = fread(g->nextblock[0], sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
-        g->nextblocklen[0] = 0;
+        unsigned int intsread = fread(nextblock, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
+        unsigned int nextblocklen = 0;
         
         // Check for end of file
         if (intsread == 0)
@@ -133,6 +124,7 @@ int partition(graph *g, char *dirname)
         }
 
         // Create file for next block
+        char blockno[128];
         sprintf(blockno, "%d", nblocks);
         strcpy(filename, dirname);
         strcat(filename, "/");
@@ -153,26 +145,26 @@ int partition(graph *g, char *dirname)
         while (1)
         {
             // Get degree
-            val = g->nextblock[0][g->nextblocklen[0]];
+            unsigned int val = nextblock[nextblocklen];
 
             // Test whether node fits in next block
-            if (g->nextblocklen[0] + 1 + val <= intsread)
+            if (nextblocklen + 1 + val <= intsread)
             {
                 // If so, increment next block length
-                g->nextblocklen[0] = g->nextblocklen[0] + 1 + val;
+                nextblocklen = nextblocklen + 1 + val;
                 currnode++;
             }
             else
             {
                 // Otherwise, unread node
-                int extra = intsread - g->nextblocklen[0];
+                int extra = intsread - nextblocklen;
                 fseek(g->stream, -extra*sizeof(unsigned int), SEEK_CUR);
                 break;
             }
         }
         
         // Write next block to file
-        fwrite(g->nextblock[0], sizeof(unsigned int), g->nextblocklen[0], out);
+        fwrite(nextblock, sizeof(unsigned int), nextblocklen, out);
         fclose(out);
     }
 
@@ -306,64 +298,9 @@ int transpose(graph *g, char *filename)
     return 0;
 }
 
-/* Read the next blocks of the graph. */
-void *loadblocks(void *vg)
+/* Get the next block of the graph. */
+int nextblock(graph *g, unsigned int threadno)
 {
-    // Get argument
-    graph *g = (graph *) vg;
-                
-    // Test graph format
-    if (g->format != BADJBLK)
-    {
-        fprintf(stderr, "Graph must be in BADJBLK format.\n");
-        return NULL;
-    }
-
-    // Declare variables
-    char graphfile[FILENAMELEN];
-    char blockno[128];
-
-    // For each next block
-    unsigned int i;
-    for (i = 0; i < NTHREADS; i++)
-    {
-        // Test whether there is a next block
-        if (g->nextblockno[i] > g->nblks)
-        {
-            g->nextblocklen[i] = 0;
-            continue;
-        }
-
-        // Open next block file
-        sprintf(blockno, "%d", g->nextblockno[i]);
-        strcpy(graphfile, g->filename);
-        strcat(graphfile, "/");
-        strcat(graphfile, blockno);
-        g->stream = fopen(graphfile, "r");
-
-        // Check file stream
-        if (g->stream == NULL)
-        {
-            fprintf(stderr, "Could not open file.\n");
-            return NULL;
-        }
-
-        // Read next block
-        g->nextblocklen[i] = fread(g->nextblock[i], sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
-
-        // Close next block file
-        fclose(g->stream);
-    }
-
-    return NULL;
-}
-
-/* Get the next two blocks of the graph. */
-int nextblocks(graph *g)
-{
-    // Declare variables
-    unsigned int *tmp;
-
     // Test graph format
     if (g->format != BADJBLK)
     {
@@ -371,31 +308,28 @@ int nextblocks(graph *g)
         return 1;
     }
 
-    // For each block
-    unsigned int i;
-    for (i = 0; i < NTHREADS; i++)
+    // Increment block number
+    g->currblockno[threadno] += NTHREADS;
+    if (g->currblockno[threadno] > g->nblks)
     {
-        // Get block
-        tmp = g->currblock[i];
-        g->currblock[i] = g->nextblock[i];
-        g->nextblock[i] = tmp;
-        g->currblocklen[i] = g->nextblocklen[i];
-        g->currblockno[i] = g->nextblockno[i];
-        g->currblocki[i] = 0;
-        g->currnode[i] = g->firstnodes[g->currblockno[i] - 1];
-
-        // Set next block number
-        g->nextblockno[i] = g->nextblockno[i] + NTHREADS;
+        g->currblockno[threadno] = threadno + 1;
     }
 
-    // Fix up next block numbers
-    if (g->nextblockno[0] > g->nblks)
+    // Open new block file
+    if (g->currblockfile[threadno] != NULL)
     {
-        for (i = 0; i < NTHREADS; i++)
-        {
-            g->nextblockno[i] = i + 1;
-        }
+        fclose(g->currblockfile[threadno]);
     }
+    char blockfile[FILENAMELEN];
+    char blockno[128];
+    sprintf(blockno, "%d", g->currblockno[threadno]);
+    strcpy(blockfile, g->filename);
+    strcat(blockfile, "/");
+    strcat(blockfile, blockno);
+    g->currblockfile[threadno] = fopen(blockfile, "r");
+
+    // Set current node
+    g->currnode[threadno] = g->firstnodes[g->currblockno[threadno]-1];
 
     return 0;
 }
@@ -410,22 +344,18 @@ unsigned int nextnode(graph *g, node *v, unsigned int threadno)
         return -1;
     }
 
-    // Test whether the block has more nodes
-    if (g->currblocki[threadno] < g->currblocklen[threadno])
+    // Read next degree
+    unsigned int intsread = fread(&v->deg, sizeof(unsigned int), 1, g->currblockfile[threadno]);
+
+    if (intsread > 0)
     {
-        // Get next node
-        v->deg = g->currblock[threadno][g->currblocki[threadno]];
-        g->currblocki[threadno]++;
-        v->adj = g->currblock[threadno] + g->currblocki[threadno];
-        g->currblocki[threadno] = g->currblocki[threadno] + v->deg;
+        // Read next node
+        v->adj = malloc(v->deg * sizeof(unsigned int));
+        fread(v->adj, sizeof(unsigned int), v->deg, g->currblockfile[threadno]);
         g->currnode[threadno]++;
         return (g->currnode[threadno] - 1);
     }
-    else
-    {
-        // No next node;
-        return -1;
-    }
-
-    return 0;
+    
+    // No next node
+    return -1;
 }
