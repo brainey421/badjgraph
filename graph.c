@@ -58,6 +58,10 @@ int initialize(graph *g, char *filename, char format)
         g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
         fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
 
+        // Get top nodes
+        g->topnodes = malloc(TOPLEN * sizeof(unsigned int));
+        fread(g->topnodes, sizeof(unsigned int), TOPLEN, g->stream);
+
         // Close index file
         fclose(g->stream);
     }
@@ -94,7 +98,15 @@ int partition(graph *g, char *dirname)
     unsigned int *nextblock = malloc(BLOCKLEN);
     char filename[FILENAMELEN];
     FILE *out;
-
+    
+    // Initialize indegrees
+    unsigned int *indegrees = malloc(sizeof(unsigned int) * g->n);
+    unsigned int i;
+    for (i = 0; i < g->n; i++)
+    {
+        indegrees[i] = 0;
+    }
+    
     // Test graph format
     if (g->format != BADJ)
     {
@@ -150,7 +162,14 @@ int partition(graph *g, char *dirname)
             // Test whether node fits in next block
             if (nextblocklen + 1 + val <= intsread)
             {
-                // If so, increment next block length
+                // If so, update indegrees
+                unsigned int j;
+                for (j = 0; j < val; j++)
+                {
+                    indegrees[nextblock[nextblocklen + 1 + j]]++;
+                }
+                
+                // Increment next block length
                 nextblocklen = nextblocklen + 1 + val;
                 currnode++;
             }
@@ -167,6 +186,29 @@ int partition(graph *g, char *dirname)
         fwrite(nextblock, sizeof(unsigned int), nextblocklen, out);
         fclose(out);
     }
+
+    // Free next block
+    free(nextblock);
+
+    // Find top-indegree nodes
+    unsigned int topnodes[MAXTOPLEN];
+    unsigned int j;
+    for (j = 0; j < MAXTOPLEN; j++)
+    {
+        topnodes[j] = (unsigned int) -1;
+    }
+    for (i = 0; i < g->n; i++)
+    {
+        for (j = 0; j < MAXTOPLEN; j++)
+        {
+            if ((topnodes[j] == (unsigned int) -1) || indegrees[i] > indegrees[topnodes[j]])
+            {
+                topnodes[j] = i;
+                break;
+            }
+        }
+    }
+    free(indegrees);
 
     // Create index file
     strcpy(filename, dirname);
@@ -188,7 +230,10 @@ int partition(graph *g, char *dirname)
     
     // Write first nodes to index file
     fwrite(firstnodes, sizeof(unsigned int), nblocks, out);
-    
+
+    // Write top-indegree nodes to index file
+    fwrite(topnodes, sizeof(unsigned int), MAXTOPLEN, out);
+
     // Close index file
     fclose(out);
 

@@ -3,21 +3,13 @@
 #define FPTYPE float
 
 /* Perform one iteration of PowerIteration. */
-int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y[])
+int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
 {
     // Initialize y to 0
     unsigned int i;
-    unsigned int j;
-    //for (i = 0; i < NTHREADS; i++)
-    //{
-    //    for (j = 0; j < g->n; j++)
-    //    {
-    //        y[i][j] = 0.0;
-    //    }
-    //}
-    for (j = 0; j < g->n; j++)
+    for (i = 0; i < g->n; i++)
     {
-        y[0][j] = 0.0;
+        y[i] = 0.0;
     }
 
     #pragma omp parallel
@@ -52,47 +44,27 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y[])
                         unsigned int vadj8 = v.adj[j];
                         
                         #pragma omp atomic 
-                        y[0][vadj1] += update;
+                        y[vadj1] += update;
                         #pragma omp atomic 
-                        y[0][vadj2] += update;
+                        y[vadj2] += update;
                         #pragma omp atomic 
-                        y[0][vadj3] += update;
+                        y[vadj3] += update;
                         #pragma omp atomic 
-                        y[0][vadj4] += update;
+                        y[vadj4] += update;
                         #pragma omp atomic 
-                        y[0][vadj5] += update;
+                        y[vadj5] += update;
                         #pragma omp atomic 
-                        y[0][vadj6] += update;
+                        y[vadj6] += update;
                         #pragma omp atomic 
-                        y[0][vadj7] += update;
+                        y[vadj7] += update;
                         #pragma omp atomic 
-                        y[0][vadj8] += update;
-
-                        //FPTYPE y1 = y[0][vadj1];
-                        //FPTYPE y2 = y[0][vadj2];
-                        //FPTYPE y3 = y[0][vadj3];
-                        //FPTYPE y4 = y[0][vadj4];
-                        //FPTYPE y5 = y[0][vadj5];
-                        //FPTYPE y6 = y[0][vadj6];
-                        //FPTYPE y7 = y[0][vadj7];
-                        //FPTYPE y8 = y[0][vadj8];
-                        
-                        //y[0][vadj1] = y1 + update;
-                        //y[0][vadj2] = y2 + update;
-                        //y[0][vadj3] = y3 + update;
-                        //y[0][vadj4] = y4 + update;
-                        //y[0][vadj5] = y5 + update;
-                        //y[0][vadj6] = y6 + update;
-                        //y[0][vadj7] = y7 + update;
-                        //y[0][vadj8] = y8 + update;
+                        y[vadj8] += update;
                     }
                     for (j = j - 7; j < v.deg; j++)
                     {
                         unsigned int vadjj = v.adj[j];
                         #pragma omp atomic 
-                        y[0][vadjj] += update;
-                        //FPTYPE yj = y[0][vadjj];
-                        //y[0][vadjj] = yj + update;
+                        y[vadjj] += update;
                     }
                 }
                 free(v.adj);
@@ -101,7 +73,6 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y[])
             // Get next block
             nextblock(g, threadno);
 
-            fprintf(stderr, "%d\n", g->currblockno[threadno]);
             // Check if iteration is over
             if (g->currblockno[threadno] <= NTHREADS)
             {
@@ -110,32 +81,23 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y[])
         }
     }
 
-    // Add y vectors
-    //for (i = 1; i < NTHREADS; i++)
-    //{
-    //    for (j = 0; j < g->n; j++)
-    //    {
-    //        y[0][j] += y[i][j];
-    //    }
-    //}
-    
     // Distribute remaining weight among the nodes
     FPTYPE remainder = 1.0;
     for (i = 0; i < g->n; i++)
     {
-        remainder -= y[0][i];
+        remainder -= y[i];
     }
     remainder /= (FPTYPE) g->n;
     for (i = 0; i < g->n; i++)
     {
-        y[0][i] += remainder;
+        y[i] += remainder;
     }
 
     return 0;
 }
 
 /* Perform PowerIteration. */
-int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y[])
+int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y)
 {
     // Initialize x to e/n
     unsigned int i;
@@ -165,7 +127,7 @@ int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y[])
         FPTYPE norm = 0.0;
         for (i = 0; i < g->n; i++)
         {
-            norm += fabs(x[i] - y[0][i]);
+            norm += fabs(x[i] - y[i]);
         }
         
         // Print residual norm
@@ -174,7 +136,7 @@ int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y[])
         // Copy y to x
         for (i = 0; i < g->n; i++)
         {
-            x[i] = y[0][i];
+            x[i] = y[i];
         }
 
         // Stop iterating if residual norm is within tolerance
@@ -231,13 +193,7 @@ int main(int argc, char *argv[])
 
     // Initialize PageRank vectors
     FPTYPE *x = malloc(g.n * sizeof(FPTYPE));
-    //FPTYPE *y[NTHREADS];
-    //for (i = 0; i < NTHREADS; i++)
-    //{
-    //    y[i] = malloc(g.n * sizeof(FPTYPE));
-    //}
-    FPTYPE *y[1];
-    y[0] = malloc(g.n * sizeof(FPTYPE));
+    FPTYPE *y = malloc(g.n * sizeof(FPTYPE));
 
     // Test which algorithm to use
     if (!strcmp(argv[3], "power"))
@@ -250,11 +206,7 @@ int main(int argc, char *argv[])
         // Invalid algorithm
         fprintf(stderr, "Unknown algorithm.\n");
         free(x);
-        //for (i = 0; i < NTHREADS; i++)
-        //{
-        //    free(y[i]);
-        //}
-        free(y[0]);
+        free(y);
         return 1;
     }
 
@@ -267,11 +219,7 @@ int main(int argc, char *argv[])
    
     // Destroy PageRank vectors
     free(x);
-    //for (i = 0; i < NTHREADS; i++)
-    //{
-    //    free(y[i]);
-    //}
-    free(y[0]);
+    free(y);
 
     return 0;
 }
