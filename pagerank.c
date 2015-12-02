@@ -12,6 +12,13 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
         y[i] = 0.0;
     }
 
+    // Create y for top-indegree
+    FPTYPE ytop[TOPLEN];
+    for (i = 0; i < TOPLEN; i++)
+    {
+        ytop[i] = 0.0;
+    }
+
     #pragma omp parallel
     {
         unsigned int threadno = omp_get_thread_num();
@@ -32,39 +39,27 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                 {
                     FPTYPE update = alpha * x[i] / v.deg;
                     unsigned int j;
-                    for (j = 7; j < v.deg; j += 8)
-                    {
-                        unsigned int vadj1 = v.adj[j-7];
-                        unsigned int vadj2 = v.adj[j-6];
-                        unsigned int vadj3 = v.adj[j-5];
-                        unsigned int vadj4 = v.adj[j-4];
-                        unsigned int vadj5 = v.adj[j-3];
-                        unsigned int vadj6 = v.adj[j-2];
-                        unsigned int vadj7 = v.adj[j-1];
-                        unsigned int vadj8 = v.adj[j];
-                        
-                        #pragma omp atomic 
-                        y[vadj1] += update;
-                        #pragma omp atomic 
-                        y[vadj2] += update;
-                        #pragma omp atomic 
-                        y[vadj3] += update;
-                        #pragma omp atomic 
-                        y[vadj4] += update;
-                        #pragma omp atomic 
-                        y[vadj5] += update;
-                        #pragma omp atomic 
-                        y[vadj6] += update;
-                        #pragma omp atomic 
-                        y[vadj7] += update;
-                        #pragma omp atomic 
-                        y[vadj8] += update;
-                    }
-                    for (j = j - 7; j < v.deg; j++)
+                    for (j = 0; j < v.deg; j++)
                     {
                         unsigned int vadjj = v.adj[j];
-                        #pragma omp atomic 
-                        y[vadjj] += update;
+                        unsigned int k;
+                        for (k = 0; k < TOPLEN; k++)
+                        {
+                            if (vadjj == g->topnodes[k])
+                            {
+                                break;
+                            }
+                        }
+                        if (k < TOPLEN)
+                        {
+                            #pragma omp atomic
+                            ytop[k] += update;
+                        }
+                        else
+                        {
+                            #pragma omp atomic
+                            y[vadjj] += update;
+                        }
                     }
                 }
                 free(v.adj);
@@ -81,6 +76,12 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
         }
     }
 
+    // Add ytop to y
+    for (i = 0; i < TOPLEN; i++)
+    {
+        y[g->topnodes[i]] = ytop[i];
+    }
+    
     // Distribute remaining weight among the nodes
     FPTYPE remainder = 1.0;
     for (i = 0; i < g->n; i++)
@@ -154,9 +155,9 @@ int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y)
 int main(int argc, char *argv[])
 {
     // Check arguments
-    if (argc < 5)
+    if (argc < 4)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] badjblk power [maxiter]\n");
+        fprintf(stderr, "Usage: ./pagerank [graphfile] badjblk [maxiter]\n");
         return 1;
     }
     
@@ -189,26 +190,14 @@ int main(int argc, char *argv[])
     // Set PageRank parameters
     FPTYPE alpha = 0.85;
     FPTYPE tol = 1e-8;
-    int maxit = atoi(argv[4]);
+    int maxit = atoi(argv[3]);
 
     // Initialize PageRank vectors
     FPTYPE *x = malloc(g.n * sizeof(FPTYPE));
     FPTYPE *y = malloc(g.n * sizeof(FPTYPE));
 
-    // Test which algorithm to use
-    if (!strcmp(argv[3], "power"))
-    {
-        // Perform PowerIteration
-        power(&g, alpha, tol, maxit, x, y);
-    }
-    else
-    {
-        // Invalid algorithm
-        fprintf(stderr, "Unknown algorithm.\n");
-        free(x);
-        free(y);
-        return 1;
-    }
+    // Perform PowerIteration
+    power(&g, alpha, tol, maxit, x, y);
 
     // Test
     fprintf(stderr, "\n");

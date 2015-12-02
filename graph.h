@@ -8,7 +8,7 @@
 #define BLOCKLEN    16777216
 #define MAXBLKS     1024
 #define MAXTOPLEN   128
-#define TOPLEN      128
+#define TOPLEN      1
 #define NTHREADS    8
 
 #define BADJ        0
