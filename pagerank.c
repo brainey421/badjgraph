@@ -38,22 +38,19 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                 if (v.deg != 0)
                 {
                     FPTYPE update = alpha * x[i] / v.deg;
+                    unsigned int topi = 0;
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {
                         unsigned int vadjj = v.adj[j];
-                        unsigned int k;
-                        for (k = 0; k < TOPLEN; k++)
+                        while (topi < TOPLEN - 1 && g->topnodes[topi] < vadjj)
                         {
-                            if (vadjj == g->topnodes[k])
-                            {
-                                break;
-                            }
+                            topi++;
                         }
-                        if (k < TOPLEN)
+                        if (vadjj == g->topnodes[topi])
                         {
                             #pragma omp atomic
-                            ytop[k] += update;
+                            ytop[topi] += update;
                         }
                         else
                         {

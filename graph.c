@@ -192,7 +192,7 @@ int partition(graph *g, char *dirname)
 
     // Find top-indegree nodes
     unsigned int topnodes[MAXTOPLEN];
-    unsigned int j;
+    unsigned int j, k;
     for (j = 0; j < MAXTOPLEN; j++)
     {
         topnodes[j] = (unsigned int) -1;
@@ -201,14 +201,37 @@ int partition(graph *g, char *dirname)
     {
         for (j = 0; j < MAXTOPLEN; j++)
         {
-            if ((topnodes[j] == (unsigned int) -1) || indegrees[i] > indegrees[topnodes[j]])
+            if (topnodes[j] == (unsigned int) -1)
             {
+                topnodes[j] = i;
+                break;
+            }
+            else if (indegrees[i] > indegrees[topnodes[j]])
+            {
+                for (k = MAXTOPLEN - 1; k > j; k--)
+                {
+                    topnodes[k] = topnodes[k-1];
+                }
                 topnodes[j] = i;
                 break;
             }
         }
     }
     free(indegrees);
+
+    // Sort top-indegree nodes
+    for (i = MAXTOPLEN - 1; i > 0; i--)
+    {
+        for (j = 0; j < i; j++)
+        {
+            if (topnodes[j] > topnodes[j+1])
+            {
+                unsigned int tmp = topnodes[j];
+                topnodes[j] = topnodes[j+1];
+                topnodes[j+1] = tmp;
+            }
+        }
+    }
 
     // Create index file
     strcpy(filename, dirname);
