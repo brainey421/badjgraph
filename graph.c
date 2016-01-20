@@ -58,10 +58,6 @@ int initialize(graph *g, char *filename, char format)
         g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
         fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
 
-        // Get top nodes
-        g->topnodes = malloc(TOPLEN * sizeof(unsigned int));
-        fread(g->topnodes, sizeof(unsigned int), TOPLEN, g->stream);
-
         // Close index file
         fclose(g->stream);
     }

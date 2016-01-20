@@ -12,13 +12,6 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
         y[i] = 0.0;
     }
 
-    // Create y for top-indegree
-    FPTYPE ytop[TOPLEN];
-    for (i = 0; i < TOPLEN; i++)
-    {
-        ytop[i] = 0.0;
-    }
-
     #pragma omp parallel
     {
         unsigned int threadno = omp_get_thread_num();
@@ -38,25 +31,12 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                 if (v.deg != 0)
                 {
                     FPTYPE update = alpha * x[i] / v.deg;
-                    unsigned int topi = 0;
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {
                         unsigned int vadjj = v.adj[j];
-                        while (topi < TOPLEN - 1 && g->topnodes[topi] < vadjj)
-                        {
-                            topi++;
-                        }
-                        if (vadjj == g->topnodes[topi])
-                        {
-                            #pragma omp atomic
-                            ytop[topi] += update;
-                        }
-                        else
-                        {
-                            #pragma omp atomic
-                            y[vadjj] += update;
-                        }
+                        #pragma omp atomic
+                        y[vadjj] += update;
                     }
                 }
                 free(v.adj);
@@ -73,12 +53,6 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
         }
     }
 
-    // Add ytop to y
-    for (i = 0; i < TOPLEN; i++)
-    {
-        y[g->topnodes[i]] = ytop[i];
-    }
-    
     // Distribute remaining weight among the nodes
     FPTYPE remainder = 1.0;
     for (i = 0; i < g->n; i++)
