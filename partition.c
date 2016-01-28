@@ -4,9 +4,9 @@
 int main(int argc, char *argv[])
 {
     // Check arguments
-    if (argc < 4)
+    if (argc < 3)
     {
-        fprintf(stderr, "Usage: ./partition [graphfile] badj [outdirectory]\n");
+        fprintf(stderr, "Usage: ./partition [graphfile] badj\n");
         return 1;
     }
     
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Edges: %llu\n\n", g.m);
 
     // Partition graph
-    partition(&g, argv[3]);
+    partition(&g);
 
     return 0;
 }

@@ -8,6 +8,7 @@
 #define BLOCKLEN    16777216
 #define MAXBLKS     1024
 #define MAXTOPLEN   128
+#define TOPLEN      128
 #define NTHREADS    8
 
 #define BADJ        0
@@ -20,14 +21,16 @@ struct graph
     FILE *stream;                           // pointer to graph file
     char format;                            // format of graph
 
-    FILE *currblockfile[NTHREADS];          // current block file
+    FILE *currblock[NTHREADS];              // current block file pointer
     unsigned int currblockno[NTHREADS];     // current block numbers
     unsigned int currnode[NTHREADS];        // current nodes
 
     unsigned long long n;                   // number of nodes
     unsigned long long m;                   // number of edges
     unsigned long long nblks;               // number of blocks
+    unsigned long long *indices;            // indices of blocks
     unsigned int *firstnodes;               // first nodes in blocks
+    unsigned int *topnodes;                 // degrees of nodes
 };
 
 /* Node */
@@ -41,7 +44,7 @@ typedef struct graph graph;
 typedef struct node node;
 
 int initialize(graph *g, char *filename, char format);              // initialize graph
-int partition(graph *g, char *dirname);                             // partition a BADJ graph into a BADJBLK graph
+int partition(graph *g);                                            // partition a BADJ graph into a BADJBLK graph
 int transpose(graph *g, char *dirname);                             // transpose a BADJ graph
 int nextblock(graph *g, unsigned int threadno);                     // get the next block of the graph
 unsigned int nextnode(graph *g, node *v, unsigned int threadno);    // get next node in the graph

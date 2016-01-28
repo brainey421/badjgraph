@@ -18,7 +18,7 @@ int initialize(graph *g, char *filename, char format)
     {
         // Open BADJ file
         strcpy(g->filename, filename);    
-        g->stream = (FILE *) fopen64(g->filename, "r");
+        g->stream = (FILE *) fopen(g->filename, "r");
     
         // Check file stream
         if (g->stream == NULL)
@@ -33,14 +33,9 @@ int initialize(graph *g, char *filename, char format)
     }
     else if (g->format == BADJBLK)
     {
-        // Get directory name
+        // Open BADJBLK file
         strcpy(g->filename, filename);
-        
-        // Open index file
-        char indexfile[FILENAMELEN];
-        strcpy(indexfile, g->filename);
-        strcat(indexfile, "/0");
-        g->stream = fopen(indexfile, "r");
+        g->stream = (FILE *) fopen(g->filename, "r");
 
         // Check file stream
         if (g->stream == NULL)
@@ -54,14 +49,15 @@ int initialize(graph *g, char *filename, char format)
         fread(&g->m, sizeof(unsigned long long), 1, g->stream);
         fread(&g->nblks, sizeof(unsigned long long), 1, g->stream);
 
-        // Get first nodes
+        // Get indices, first nodes, and top nodes
+        g->indices = malloc(g->nblks * sizeof(unsigned long long));
+        fread(g->indices, sizeof(unsigned long long), g->nblks, g->stream);
         g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
         fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
-
-        // Close index file
-        fclose(g->stream);
+        g->topnodes = malloc(TOPLEN * sizeof(unsigned int));
+        fread(g->topnodes, sizeof(unsigned int), TOPLEN, g->stream);
     }
-    
+
     // Check number of edges
     if (g->m > 4294967296)
     {
@@ -74,8 +70,15 @@ int initialize(graph *g, char *filename, char format)
     for (i = 0; i < NTHREADS; i++)
     {
         // Current blocks
-        g->currblockfile[i] = NULL;
+        g->currblock[i] = (FILE *) fopen(g->filename, "r");
         g->currblockno[i] = i - NTHREADS + 1;
+
+        // Check file stream        
+        if (g->currblock[i] == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+            return 1;
+        }
     }
 
     // Set number of threads
@@ -85,24 +88,8 @@ int initialize(graph *g, char *filename, char format)
 }
 
 /* Partition a BADJ graph into a BADJBLK graph. */
-int partition(graph *g, char *dirname)
-{
-    // Declare variables
-    unsigned int nblocks = 0;
-    unsigned int currnode = 0;
-    unsigned int firstnodes[MAXBLKS];
-    unsigned int *nextblock = malloc(BLOCKLEN);
-    char filename[FILENAMELEN];
-    FILE *out;
-    
-    // Initialize indegrees
-    unsigned int *indegrees = malloc(sizeof(unsigned int) * g->n);
-    unsigned int i;
-    for (i = 0; i < g->n; i++)
-    {
-        indegrees[i] = 0;
-    }
-    
+int partition(graph *g)
+{ 
     // Test graph format
     if (g->format != BADJ)
     {
@@ -110,12 +97,36 @@ int partition(graph *g, char *dirname)
         return 1;
     }
 
-    // For each block
+    // Declare variables
+    unsigned int nblocks = 0;
+    unsigned int currnode = 0;
+    unsigned long long indices[MAXBLKS];
+    unsigned int firstnodes[MAXBLKS];
+   
+    // Initialize block
+    unsigned int *block = malloc(BLOCKLEN);
+    
+    // Initialize degrees
+    unsigned int *degrees = malloc(sizeof(unsigned int) * g->n);
+
+    // Initialize indegrees
+    unsigned int *indegrees = malloc(sizeof(unsigned int) * g->n);
+    unsigned int i;
+    for (i = 0; i < g->n; i++)
+    {
+        indegrees[i] = 0;
+    }
+   
+    // First pass over the blocks
     while (1)
     {
-        // Read maximal next block
-        unsigned int intsread = fread(nextblock, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
-        unsigned int nextblocklen = 0;
+        // Set index of block and its first node
+        indices[nblocks] = ftello(g->stream);
+        firstnodes[nblocks] = currnode;
+
+        // Read maximal block
+        unsigned int intsread = fread(block, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
+        unsigned int blocklen = 0;
         
         // Check for end of file
         if (intsread == 0)
@@ -131,60 +142,36 @@ int partition(graph *g, char *dirname)
             return 1;
         }
 
-        // Create file for next block
-        char blockno[128];
-        sprintf(blockno, "%d", nblocks);
-        strcpy(filename, dirname);
-        strcat(filename, "/");
-        strcat(filename, blockno);
-        out = fopen(filename, "w");
-
-        // Check file stream
-        if (out == NULL)
-        {
-            fprintf(stderr, "Could not open file.\n");
-            return 1;
-        }
-
-        // Set first node in block
-        firstnodes[nblocks-1] = currnode;
-
         // For each node
         while (1)
         {
             // Get degree
-            unsigned int val = nextblock[nextblocklen];
+            unsigned int deg = block[blocklen];
 
-            // Test whether node fits in next block
-            if (nextblocklen + 1 + val <= intsread)
+            // Test whether node fits in block
+            if (blocklen + 1 + deg <= intsread)
             {
-                // If so, update indegrees
+                // If so, update degrees
+                degrees[currnode] = deg;
                 unsigned int j;
-                for (j = 0; j < val; j++)
+                for (j = 0; j < deg; j++)
                 {
-                    indegrees[nextblock[nextblocklen + 1 + j]]++;
+                    indegrees[block[blocklen + 1 + j]]++;
                 }
                 
-                // Increment next block length
-                nextblocklen = nextblocklen + 1 + val;
+                // and increment block length
+                blocklen = blocklen + 1 + deg;
                 currnode++;
             }
             else
             {
                 // Otherwise, unread node
-                int extra = intsread - nextblocklen;
+                int extra = intsread - blocklen;
                 fseek(g->stream, -extra*sizeof(unsigned int), SEEK_CUR);
                 break;
             }
         }
-        
-        // Write next block to file
-        fwrite(nextblock, sizeof(unsigned int), nextblocklen, out);
-        fclose(out);
     }
-
-    // Free next block
-    free(nextblock);
 
     // Find top-indegree nodes
     unsigned int topnodes[MAXTOPLEN];
@@ -213,7 +200,6 @@ int partition(graph *g, char *dirname)
             }
         }
     }
-    free(indegrees);
 
     // Sort top-indegree nodes
     for (i = MAXTOPLEN - 1; i > 0; i--)
@@ -229,10 +215,11 @@ int partition(graph *g, char *dirname)
         }
     }
 
-    // Create index file
-    strcpy(filename, dirname);
-    strcat(filename, "/0");
-    out = fopen(filename, "w");
+    // Create BADJBLK file
+    char filename[FILENAMELEN];
+    strcpy(filename, g->filename);
+    strcat(filename, "blk");
+    FILE *out = (FILE *) fopen(filename, "w");
 
     // Check file stream
     if (out == NULL)
@@ -241,123 +228,75 @@ int partition(graph *g, char *dirname)
         return 1;
     }
 
-    // Write numbers of nodes, edges, and blocks to index file
+    // Write numbers of nodes, edges, and blocks
     unsigned long long nblocksl = (unsigned long long) nblocks;
     fwrite(&g->n, sizeof(unsigned long long), 1, out);
     fwrite(&g->m, sizeof(unsigned long long), 1, out);
     fwrite(&nblocksl, sizeof(unsigned long long), 1, out);
-    
-    // Write first nodes to index file
-    fwrite(firstnodes, sizeof(unsigned int), nblocks, out);
 
-    // Write top-indegree nodes to index file
+    // Update block indices to account for nblocks, indices, firstnodes, degrees, and delimiters
+    for (i = 0; i < nblocks; i++)
+    {
+        indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + MAXTOPLEN + i)*sizeof(unsigned int);
+    }
+
+    // Write block indices, first nodes, and top nodes
+    fwrite(indices, sizeof(unsigned long long), nblocks, out);
+    fwrite(firstnodes, sizeof(unsigned int), nblocks, out);
     fwrite(topnodes, sizeof(unsigned int), MAXTOPLEN, out);
 
-    // Close index file
+    // Rewind BADJ file
+    fseek(g->stream, sizeof(unsigned long long) * 2, SEEK_SET);
+    currnode = 0;
+
+    // Second pass over the blocks
+    while (1)
+    {
+        // Read maximal block
+        unsigned int intsread = fread(block, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
+        unsigned int blocklen = 0;
+        
+        // Check for end of file
+        if (intsread == 0)
+        {
+            break;
+        }
+        
+        // For each node
+        while (1)
+        {
+            // Get degree
+            unsigned int deg = block[blocklen];
+
+            // Test whether node fits in block
+            if (blocklen + 1 + deg <= intsread)
+            {
+                // If so, increment block length
+                blocklen = blocklen + 1 + deg;
+                currnode++;
+            }
+            else
+            {
+                // Otherwise, unread node
+                int extra = intsread - blocklen;
+                fseek(g->stream, -extra*sizeof(unsigned int), SEEK_CUR);
+                break;
+            }
+        }
+        
+        // Write block
+        fwrite(block, sizeof(unsigned int), blocklen, out);
+        unsigned int delimiter = (unsigned int) -1;
+        fwrite(&delimiter, sizeof(unsigned int), 1, out);
+    }
+
+    // Close BADJBLK file
     fclose(out);
 
-    return 0;
-}
-
-/* Transpose a BADJ graph. */
-int transpose(graph *g, char *filename)
-{
-    // Declare variables
-    unsigned int i;
-    unsigned int j;
-    unsigned int deg;
-    unsigned int *adj;
-    unsigned int *degt;
-    unsigned int *currdegt;
-    unsigned int **adjt;
-    FILE *out;
-
-    // Test graph format
-    if (g->format != BADJ)
-    {
-        fprintf(stderr, "Original graph must be in BADJ format.\n");
-        return 1;
-    }
-
-    // Allocate space for degrees in transpose
-    degt = malloc(sizeof(unsigned int) * g->n);
-    currdegt = malloc(sizeof(unsigned int) * g->n);
-    for (i = 0; i < g->n; i++)
-    {
-        degt[i] = 0;
-        currdegt[i] = 0;
-    }
-
-    // For each node
-    for (i = 0; i < g->n; i++)
-    {
-        // Read adjacency list
-        fread(&deg, sizeof(unsigned int), 1, g->stream);
-        adj = malloc(sizeof(unsigned int) * deg);
-        fread(adj, sizeof(unsigned int), deg, g->stream);
-
-        // Increment degrees in transpose
-        for (j = 0; j < deg; j++)
-        {
-            degt[adj[j]]++;
-        }
-        free(adj);
-    }
-
-    // Allocate space for adjacency list in transpose
-    adjt = malloc(sizeof(unsigned int *) * g->n);
-    for (i = 0; i < g->n; i++)
-    {
-        adjt[i] = malloc(sizeof(unsigned int) * degt[i]);
-    }
-
-    // Rewind graph
-    fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
-
-    // For each node
-    for (i = 0; i < g->n; i++)
-    {
-        // Read adjacency list
-        fread(&deg, sizeof(unsigned int), 1, g->stream);
-        adj = malloc(sizeof(unsigned int) * deg);
-        fread(adj, sizeof(unsigned int), deg, g->stream);
-
-        // Update adjacency list in transpose
-        for (j = 0; j < deg; j++)
-        {
-            adjt[adj[j]][currdegt[adj[j]]] = i;
-            currdegt[adj[j]]++;
-        }
-        free(adj);
-    }
-
-    // Create BADJ file
-    out = fopen(filename, "w");
-
-    // Write number of nodes and edges
-    fwrite(&g->n, sizeof(unsigned long long), 1, out);
-    fwrite(&g->m, sizeof(unsigned long long), 1, out);
-    
-    // For each node
-    for (i = 0; i < g->n; i++)
-    {
-        // Write degree in transpose
-        fwrite(&degt[i], sizeof(unsigned int), 1, out);
-
-        // Write each adjacent node in transpose
-        for (j = 0; j < degt[i]; j++)
-        {
-            fwrite(&adjt[i][j], sizeof(unsigned int), 1, out);
-        }
-    }
-
-    // Close BADJ file
-    fclose(out);
-    
-    // Free variables
-    free(degt);
-    free(currdegt);
-    free(adjt);
+    // Free stuff
+    free(block);
+    free(degrees);
+    free(indegrees);
 
     return 0;
 }
@@ -379,18 +318,8 @@ int nextblock(graph *g, unsigned int threadno)
         g->currblockno[threadno] = threadno + 1;
     }
 
-    // Open new block file
-    if (g->currblockfile[threadno] != NULL)
-    {
-        fclose(g->currblockfile[threadno]);
-    }
-    char blockfile[FILENAMELEN];
-    char blockno[128];
-    sprintf(blockno, "%d", g->currblockno[threadno]);
-    strcpy(blockfile, g->filename);
-    strcat(blockfile, "/");
-    strcat(blockfile, blockno);
-    g->currblockfile[threadno] = fopen(blockfile, "r");
+    // Set block file pointer
+    fseeko(g->currblock[threadno], g->indices[g->currblockno[threadno]-1], SEEK_SET);
 
     // Set current node
     g->currnode[threadno] = g->firstnodes[g->currblockno[threadno]-1];
@@ -409,13 +338,13 @@ unsigned int nextnode(graph *g, node *v, unsigned int threadno)
     }
 
     // Read next degree
-    unsigned int intsread = fread(&v->deg, sizeof(unsigned int), 1, g->currblockfile[threadno]);
+    unsigned int intsread = fread(&v->deg, sizeof(unsigned int), 1, g->currblock[threadno]);
 
-    if (intsread > 0)
+    if (intsread > 0 && v->deg != (unsigned int) -1)
     {
         // Read next node
         v->adj = malloc(v->deg * sizeof(unsigned int));
-        fread(v->adj, sizeof(unsigned int), v->deg, g->currblockfile[threadno]);
+        fread(v->adj, sizeof(unsigned int), v->deg, g->currblock[threadno]);
         g->currnode[threadno]++;
         return (g->currnode[threadno] - 1);
     }
