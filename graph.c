@@ -49,13 +49,11 @@ int initialize(graph *g, char *filename, char format)
         fread(&g->m, sizeof(unsigned long long), 1, g->stream);
         fread(&g->nblks, sizeof(unsigned long long), 1, g->stream);
 
-        // Get indices, first nodes, and top nodes
+        // Get indices and first nodes
         g->indices = malloc(g->nblks * sizeof(unsigned long long));
         fread(g->indices, sizeof(unsigned long long), g->nblks, g->stream);
         g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
         fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
-        g->topnodes = malloc(TOPLEN * sizeof(unsigned int));
-        fread(g->topnodes, sizeof(unsigned int), TOPLEN, g->stream);
     }
 
     // Check number of edges
@@ -174,15 +172,15 @@ int partition(graph *g)
     }
 
     // Find top-indegree nodes
-    unsigned int topnodes[MAXTOPLEN];
+    unsigned int topnodes[TOPLEN];
     unsigned int j, k;
-    for (j = 0; j < MAXTOPLEN; j++)
+    for (j = 0; j < TOPLEN; j++)
     {
         topnodes[j] = (unsigned int) -1;
     }
     for (i = 0; i < g->n; i++)
     {
-        for (j = 0; j < MAXTOPLEN; j++)
+        for (j = 0; j < TOPLEN; j++)
         {
             if (topnodes[j] == (unsigned int) -1)
             {
@@ -191,7 +189,7 @@ int partition(graph *g)
             }
             else if (indegrees[i] > indegrees[topnodes[j]])
             {
-                for (k = MAXTOPLEN - 1; k > j; k--)
+                for (k = TOPLEN - 1; k > j; k--)
                 {
                     topnodes[k] = topnodes[k-1];
                 }
@@ -202,7 +200,7 @@ int partition(graph *g)
     }
 
     // Sort top-indegree nodes
-    for (i = MAXTOPLEN - 1; i > 0; i--)
+    for (i = TOPLEN - 1; i > 0; i--)
     {
         for (j = 0; j < i; j++)
         {
@@ -234,16 +232,16 @@ int partition(graph *g)
     fwrite(&g->m, sizeof(unsigned long long), 1, out);
     fwrite(&nblocksl, sizeof(unsigned long long), 1, out);
 
-    // Update block indices to account for nblocks, indices, firstnodes, degrees, and delimiters
+    // Update block indices to account for nblocks, indices, firstnodes, and delimiters
     for (i = 0; i < nblocks; i++)
     {
-        indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + MAXTOPLEN + i)*sizeof(unsigned int);
+        indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + i)*sizeof(unsigned int);
     }
 
-    // Write block indices, first nodes, and top nodes
+    // Write block indices and first nodes
+    // TODO: Currently ignoring topnodes
     fwrite(indices, sizeof(unsigned long long), nblocks, out);
     fwrite(firstnodes, sizeof(unsigned int), nblocks, out);
-    fwrite(topnodes, sizeof(unsigned int), MAXTOPLEN, out);
 
     // Rewind BADJ file
     fseek(g->stream, sizeof(unsigned long long) * 2, SEEK_SET);
