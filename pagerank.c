@@ -30,7 +30,7 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                 // Compute
                 if (v.deg != 0)
                 {
-                    FPTYPE update = alpha * x[i] / v.deg;
+                    FPTYPE update = alpha * x[i] / g->degrees[i];
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {
@@ -144,9 +144,6 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    // Declare variables
-    unsigned int i;
-    
     // Initialize graph
     graph g;
     if (initialize(&g, argv[1], format))
@@ -172,12 +169,13 @@ int main(int argc, char *argv[])
 
     // Test
     fprintf(stderr, "\n");
+    unsigned int i;
     for (i = 0; i < 10; i++)
     {
         fprintf(stderr, "%d: %e\n", i, x[i]);
     }
    
-    // Destroy PageRank vectors
+    // Destroy vectors
     free(x);
     free(y);
 

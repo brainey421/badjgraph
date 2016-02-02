@@ -54,6 +54,8 @@ int initialize(graph *g, char *filename, char format)
         fread(g->indices, sizeof(unsigned long long), g->nblks, g->stream);
         g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
         fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
+        g->degrees = malloc(g->n * sizeof(unsigned int));
+        fread(g->degrees, sizeof(unsigned int), g->n, g->stream);
     }
 
     // Check number of edges
@@ -200,6 +202,7 @@ int partition(graph *g)
     }
 
     // Sort top-indegree nodes
+    // TODO: Currently ignoring topnodes
     for (i = TOPLEN - 1; i > 0; i--)
     {
         for (j = 0; j < i; j++)
@@ -232,16 +235,16 @@ int partition(graph *g)
     fwrite(&g->m, sizeof(unsigned long long), 1, out);
     fwrite(&nblocksl, sizeof(unsigned long long), 1, out);
 
-    // Update block indices to account for nblocks, indices, firstnodes, and delimiters
+    // Update block indices to account for nblocks, indices, firstnodes, degrees, and delimiters
     for (i = 0; i < nblocks; i++)
     {
-        indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + i)*sizeof(unsigned int);
+        indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + g->n + i)*sizeof(unsigned int);
     }
 
     // Write block indices and first nodes
-    // TODO: Currently ignoring topnodes
     fwrite(indices, sizeof(unsigned long long), nblocks, out);
     fwrite(firstnodes, sizeof(unsigned int), nblocks, out);
+    fwrite(degrees, sizeof(unsigned int), g->n, out);
 
     // Rewind BADJ file
     fseek(g->stream, sizeof(unsigned long long) * 2, SEEK_SET);
