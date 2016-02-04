@@ -176,7 +176,6 @@ int partition(graph *g)
     for (i = 0; i < nblocks; i++)
     {
         indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + i)*sizeof(unsigned long);
-        fprintf(stderr, "%d\n", indices[i]);
     }
 
     // Write block indices and first nodes
@@ -190,7 +189,6 @@ int partition(graph *g)
     // For each block
     while (1)
     {
-        fprintf(stderr, "%d\n", ftello(out));
         // Read maximal block
         unsigned int intsread = fread(block, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
         unsigned int blocklen = 0;
