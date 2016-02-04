@@ -30,7 +30,7 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                 // Compute
                 if (v.deg != 0)
                 {
-                    FPTYPE update = alpha * x[i] / g->degrees[i];
+                    FPTYPE update = alpha * x[i] / v.deg;
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {

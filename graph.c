@@ -54,8 +54,6 @@ int initialize(graph *g, char *filename, char format)
         fread(g->indices, sizeof(unsigned long long), g->nblks, g->stream);
         g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
         fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
-        g->degrees = malloc(g->n * sizeof(unsigned int));
-        fread(g->degrees, sizeof(unsigned int), g->n, g->stream);
     }
 
     // Check number of edges
@@ -106,21 +104,10 @@ int partition(graph *g)
     // Initialize block
     unsigned int *block = malloc(BLOCKLEN);
     
-    // Initialize degrees
-    unsigned int *degrees = malloc(sizeof(unsigned int) * g->n);
-
-    // Initialize indegrees
-    unsigned int *indegrees = malloc(sizeof(unsigned int) * g->n);
-    unsigned int i;
-    for (i = 0; i < g->n; i++)
-    {
-        indegrees[i] = 0;
-    }
-   
-    // First pass over the blocks
+    // For each block
     while (1)
     {
-        // Set index of block and its first node
+        // Set block index and first node
         indices[nblocks] = ftello(g->stream);
         firstnodes[nblocks] = currnode;
 
@@ -151,15 +138,7 @@ int partition(graph *g)
             // Test whether node fits in block
             if (blocklen + 1 + deg <= intsread)
             {
-                // If so, update degrees
-                degrees[currnode] = deg;
-                unsigned int j;
-                for (j = 0; j < deg; j++)
-                {
-                    indegrees[block[blocklen + 1 + j]]++;
-                }
-                
-                // and increment block length
+                // If so, increment block length
                 blocklen = blocklen + 1 + deg;
                 currnode++;
             }
@@ -169,49 +148,6 @@ int partition(graph *g)
                 int extra = intsread - blocklen;
                 fseek(g->stream, -extra*sizeof(unsigned int), SEEK_CUR);
                 break;
-            }
-        }
-    }
-
-    // Find top-indegree nodes
-    unsigned int topnodes[TOPLEN];
-    unsigned int j, k;
-    for (j = 0; j < TOPLEN; j++)
-    {
-        topnodes[j] = (unsigned int) -1;
-    }
-    for (i = 0; i < g->n; i++)
-    {
-        for (j = 0; j < TOPLEN; j++)
-        {
-            if (topnodes[j] == (unsigned int) -1)
-            {
-                topnodes[j] = i;
-                break;
-            }
-            else if (indegrees[i] > indegrees[topnodes[j]])
-            {
-                for (k = TOPLEN - 1; k > j; k--)
-                {
-                    topnodes[k] = topnodes[k-1];
-                }
-                topnodes[j] = i;
-                break;
-            }
-        }
-    }
-
-    // Sort top-indegree nodes
-    // TODO: Currently ignoring topnodes
-    for (i = TOPLEN - 1; i > 0; i--)
-    {
-        for (j = 0; j < i; j++)
-        {
-            if (topnodes[j] > topnodes[j+1])
-            {
-                unsigned int tmp = topnodes[j];
-                topnodes[j] = topnodes[j+1];
-                topnodes[j+1] = tmp;
             }
         }
     }
@@ -235,24 +171,26 @@ int partition(graph *g)
     fwrite(&g->m, sizeof(unsigned long long), 1, out);
     fwrite(&nblocksl, sizeof(unsigned long long), 1, out);
 
-    // Update block indices to account for nblocks, indices, firstnodes, degrees, and delimiters
+    // Correct block indices
+    unsigned int i;
     for (i = 0; i < nblocks; i++)
     {
-        indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + g->n + i)*sizeof(unsigned int);
+        indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + i)*sizeof(unsigned long);
+        fprintf(stderr, "%d\n", indices[i]);
     }
 
     // Write block indices and first nodes
     fwrite(indices, sizeof(unsigned long long), nblocks, out);
     fwrite(firstnodes, sizeof(unsigned int), nblocks, out);
-    fwrite(degrees, sizeof(unsigned int), g->n, out);
 
     // Rewind BADJ file
     fseek(g->stream, sizeof(unsigned long long) * 2, SEEK_SET);
     currnode = 0;
 
-    // Second pass over the blocks
+    // For each block
     while (1)
     {
+        fprintf(stderr, "%d\n", ftello(out));
         // Read maximal block
         unsigned int intsread = fread(block, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
         unsigned int blocklen = 0;
@@ -262,7 +200,7 @@ int partition(graph *g)
         {
             break;
         }
-        
+
         // For each node
         while (1)
         {
@@ -285,7 +223,7 @@ int partition(graph *g)
             }
         }
         
-        // Write block
+        // Write block with delimiter
         fwrite(block, sizeof(unsigned int), blocklen, out);
         unsigned int delimiter = (unsigned int) -1;
         fwrite(&delimiter, sizeof(unsigned int), 1, out);
@@ -296,8 +234,6 @@ int partition(graph *g)
 
     // Free stuff
     free(block);
-    free(degrees);
-    free(indegrees);
 
     return 0;
 }

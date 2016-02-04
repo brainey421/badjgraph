@@ -7,7 +7,6 @@
 #define FILENAMELEN 1024
 #define BLOCKLEN    16777216
 #define MAXBLKS     1024
-#define TOPLEN      256
 #define NTHREADS    8
 
 #define BADJ        0
@@ -29,7 +28,6 @@ struct graph
     unsigned long long nblks;               // number of blocks
     unsigned long long *indices;            // indices of blocks
     unsigned int *firstnodes;               // first nodes in blocks
-    unsigned int *degrees;                  // out-degrees of nodes
 };
 
 /* Node */
