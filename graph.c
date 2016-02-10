@@ -3,59 +3,31 @@
 /* Initialize graph. */
 int initialize(graph *g, char *filename, char format)
 {
-    // Check file name length
+    // Set number of threads
+    omp_set_num_threads(NTHREADS);
+
+    // Check graph file name length
     if (strlen(filename) > FILENAMELEN)
     {
         fprintf(stderr, "Max file name length exceeded.\n");
         return 1;
     }
 
-    // Get graph format
-    g->format = format;
-    
-    // Test graph format
-    if (g->format == BADJ)
+    // Open graph file
+    strcpy(g->filename, filename);
+    g->stream = fopen(g->filename, "r");
+
+    // Check file stream
+    if (g->stream == NULL)
     {
-        // Open BADJ file
-        strcpy(g->filename, filename);    
-        g->stream = (FILE *) fopen(g->filename, "r");
-    
-        // Check file stream
-        if (g->stream == NULL)
-        {
-            fprintf(stderr, "Could not open file.\n");
-            return 1;
-        }
-
-        // Get numbers of nodes and edges
-        fread(&g->n, sizeof(unsigned long long), 1, g->stream);
-        fread(&g->m, sizeof(unsigned long long), 1, g->stream);
-    }
-    else if (g->format == BADJBLK)
-    {
-        // Open BADJBLK file
-        strcpy(g->filename, filename);
-        g->stream = (FILE *) fopen(g->filename, "r");
-
-        // Check file stream
-        if (g->stream == NULL)
-        {
-            fprintf(stderr, "Could not open file.\n");
-            return 1;
-        }
-
-        // Get numbers of nodes, edges, and blocks
-        fread(&g->n, sizeof(unsigned long long), 1, g->stream);
-        fread(&g->m, sizeof(unsigned long long), 1, g->stream);
-        fread(&g->nblks, sizeof(unsigned long long), 1, g->stream);
-
-        // Get indices and first nodes
-        g->indices = malloc(g->nblks * sizeof(unsigned long long));
-        fread(g->indices, sizeof(unsigned long long), g->nblks, g->stream);
-        g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
-        fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
+        fprintf(stderr, "Could not open file.\n");
+        return 1;
     }
 
+    // Get numbers of nodes and edges
+    fread(&g->n, sizeof(unsigned long long), 1, g->stream);
+    fread(&g->m, sizeof(unsigned long long), 1, g->stream);
+    
     // Check number of edges
     if (g->m > 4294967296)
     {
@@ -63,24 +35,58 @@ int initialize(graph *g, char *filename, char format)
         return 1;
     }
 
-    // Initialize blocks
-    unsigned int i;
-    for (i = 0; i < NTHREADS; i++)
+    // Get graph format
+    g->format = format;
+    
+    // If graph is in BADJBLK format
+    if (g->format == BADJBLK)
     {
-        // Current blocks
-        g->currblock[i] = (FILE *) fopen(g->filename, "r");
-        g->currblockno[i] = i - NTHREADS + 1;
-
-        // Check file stream        
-        if (g->currblock[i] == NULL)
+        // Get number of blocks
+        fread(&g->nblks, sizeof(unsigned long long), 1, g->stream);
+        
+        // Get indices and first nodes
+        g->indices = malloc(g->nblks * sizeof(unsigned long long));
+        fread(g->indices, sizeof(unsigned long long), g->nblks, g->stream);
+        g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
+        fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
+        
+        // Initialize blocks
+        unsigned int i;
+        for (i = 0; i < NTHREADS; i++)
         {
-            fprintf(stderr, "Could not open file.\n");
-            return 1;
+            // Open file for block
+            g->currblock[i] = fopen(g->filename, "r");
+            g->currblockno[i] = i - NTHREADS + 1;
+
+            // Check file stream        
+            if (g->currblock[i] == NULL)
+            {
+                fprintf(stderr, "Could not open file.\n");
+                return 1;
+            }
         }
     }
 
-    // Set number of threads
-    omp_set_num_threads(NTHREADS);
+    return 0;
+}
+
+/* Destroy graph. */
+int destroy(graph *g)
+{
+    // Close graph file
+    fclose(g->stream);
+
+    // If graph is in BADJBLK format
+    if (g->format == BADJBLK)
+    {
+        // Destroy blocks
+        unsigned int i;
+        for (i = 0; i < NTHREADS; i++)
+        {
+            // Close file for block
+            fclose(g->currblock[i]);
+        }
+    }
 
     return 0;
 }
@@ -96,7 +102,7 @@ int partition(graph *g)
     }
 
     // Declare variables
-    unsigned int nblocks = 0;
+    unsigned long long nblks = 0;
     unsigned int currnode = 0;
     unsigned long long indices[MAXBLKS];
     unsigned int firstnodes[MAXBLKS];
@@ -108,8 +114,8 @@ int partition(graph *g)
     while (1)
     {
         // Set block index and first node
-        indices[nblocks] = ftello(g->stream);
-        firstnodes[nblocks] = currnode;
+        indices[nblks] = ftello(g->stream);
+        firstnodes[nblks] = currnode;
 
         // Read maximal block
         unsigned int intsread = fread(block, sizeof(unsigned int), BLOCKLEN / sizeof(unsigned int), g->stream);
@@ -122,8 +128,8 @@ int partition(graph *g)
         }
         
         // Increment the number of blocks
-        nblocks++;
-        if (nblocks > MAXBLKS)
+        nblks++;
+        if (nblks > MAXBLKS)
         {
             fprintf(stderr, "Too many blocks to handle.\n");
             return 1;
@@ -166,21 +172,20 @@ int partition(graph *g)
     }
 
     // Write numbers of nodes, edges, and blocks
-    unsigned long long nblocksl = (unsigned long long) nblocks;
     fwrite(&g->n, sizeof(unsigned long long), 1, out);
     fwrite(&g->m, sizeof(unsigned long long), 1, out);
-    fwrite(&nblocksl, sizeof(unsigned long long), 1, out);
+    fwrite(&nblks, sizeof(unsigned long long), 1, out);
 
     // Correct block indices
     unsigned int i;
-    for (i = 0; i < nblocks; i++)
+    for (i = 0; i < nblks; i++)
     {
-        indices[i] = indices[i] + (1 + nblocks)*sizeof(unsigned long long) + (nblocks + i)*sizeof(unsigned long);
+        indices[i] = indices[i] + (1 + nblks)*sizeof(unsigned long long) + (nblks + i)*sizeof(unsigned long);
     }
 
     // Write block indices and first nodes
-    fwrite(indices, sizeof(unsigned long long), nblocks, out);
-    fwrite(firstnodes, sizeof(unsigned int), nblocks, out);
+    fwrite(indices, sizeof(unsigned long long), nblks, out);
+    fwrite(firstnodes, sizeof(unsigned int), nblks, out);
 
     // Rewind BADJ file
     fseek(g->stream, sizeof(unsigned long long) * 2, SEEK_SET);
@@ -230,7 +235,7 @@ int partition(graph *g)
     // Close BADJBLK file
     fclose(out);
 
-    // Free stuff
+    // Free block
     free(block);
 
     return 0;
@@ -262,7 +267,7 @@ int nextblock(graph *g, unsigned int threadno)
     return 0;
 }
 
-/* Get the next node in the graph. */
+/* Get the next node of the block. */
 unsigned int nextnode(graph *g, node *v, unsigned int threadno)
 {
     // Test graph format
@@ -273,9 +278,10 @@ unsigned int nextnode(graph *g, node *v, unsigned int threadno)
     }
 
     // Read next degree
-    unsigned int intsread = fread(&v->deg, sizeof(unsigned int), 1, g->currblock[threadno]);
+    fread(&v->deg, sizeof(unsigned int), 1, g->currblock[threadno]);
 
-    if (intsread > 0 && v->deg != (unsigned int) -1)
+    // If there is another node
+    if (v->deg != (unsigned int) -1)
     {
         // Read next node
         v->adj = malloc(v->deg * sizeof(unsigned int));
@@ -284,6 +290,6 @@ unsigned int nextnode(graph *g, node *v, unsigned int threadno)
         return (g->currnode[threadno] - 1);
     }
     
-    // No next node
+    // Otherwise, no next node
     return -1;
 }

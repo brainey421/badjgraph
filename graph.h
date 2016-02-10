@@ -19,15 +19,15 @@ struct graph
     FILE *stream;                           // pointer to graph file
     char format;                            // format of graph
 
-    FILE *currblock[NTHREADS];              // current block file pointer
-    unsigned int currblockno[NTHREADS];     // current block numbers
-    unsigned int currnode[NTHREADS];        // current nodes
-
     unsigned long long n;                   // number of nodes
     unsigned long long m;                   // number of edges
     unsigned long long nblks;               // number of blocks
-    unsigned long long *indices;            // indices of blocks
+    unsigned long long *indices;            // indices of blocks in graph file
     unsigned int *firstnodes;               // first nodes in blocks
+
+    FILE *currblock[NTHREADS];              // current block file pointers
+    unsigned int currblockno[NTHREADS];     // current block numbers
+    unsigned int currnode[NTHREADS];        // current nodes
 };
 
 /* Node */
@@ -41,7 +41,7 @@ typedef struct graph graph;
 typedef struct node node;
 
 int initialize(graph *g, char *filename, char format);              // initialize graph
+int destroy(graph *g);                                              // destroy graph
 int partition(graph *g);                                            // partition a BADJ graph into a BADJBLK graph
-int transpose(graph *g, char *dirname);                             // transpose a BADJ graph
 int nextblock(graph *g, unsigned int threadno);                     // get the next block of the graph
-unsigned int nextnode(graph *g, node *v, unsigned int threadno);    // get next node in the graph
+unsigned int nextnode(graph *g, node *v, unsigned int threadno);    // get the next node of the block

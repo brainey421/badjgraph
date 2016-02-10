@@ -10,9 +10,6 @@ int propagate(graph *g, int maxit, unsigned int *x)
         x[i] = i;
     }
 
-    // Initialize number of iterations
-    int iter = 0;
-
     // Get next blocks
     for (i = 0; i < NTHREADS; i++)
     {
@@ -20,6 +17,7 @@ int propagate(graph *g, int maxit, unsigned int *x)
     }
 
     // For each iteration
+    unsigned int iter = 0;
     while (iter < maxit)
     {
         // Propagate labels
@@ -91,30 +89,15 @@ int propagate(graph *g, int maxit, unsigned int *x)
 int main(int argc, char *argv[])
 {
     // Check arguments
-    if (argc < 4)
+    if (argc < 3)
     {
-        fprintf(stderr, "Usage: ./components [graphfile] badjblk [maxiter]\n");
+        fprintf(stderr, "Usage: ./components [BADJBLK file] [maxiter]\n");
         return 1;
     }
-    
-    // Get graph format
-    char format;
-    if (!strcmp(argv[2], "badjblk"))
-    {
-        format = BADJBLK;
-    }
-    else
-    {
-        fprintf(stderr, "Unknown format.\n");
-        return 1;
-    }
-
-    // Declare variables
-    unsigned int i;
     
     // Initialize graph
     graph g;
-    if (initialize(&g, argv[1], format))
+    if (initialize(&g, argv[1], BADJBLK))
     {
         return 1;
     }
@@ -124,7 +107,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Edges: %llu\n\n", g.m);
 
     // Set number of iterations
-    int maxit = atoi(argv[3]);
+    int maxit = atoi(argv[2]);
 
     // Initialize label vector
     unsigned int *x = malloc(g.n * sizeof(unsigned int));
@@ -134,6 +117,7 @@ int main(int argc, char *argv[])
 
     // Test
     fprintf(stderr, "\n");
+    unsigned int i;
     for (i = 0; i < 10; i++)
     {
         fprintf(stderr, "%d: %d\n", i, x[i]);
@@ -141,6 +125,9 @@ int main(int argc, char *argv[])
    
     // Destroy label vector
     free(x);
+
+    // Destroy graph
+    destroy(&g);
 
     return 0;
 }

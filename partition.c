@@ -4,27 +4,15 @@
 int main(int argc, char *argv[])
 {
     // Check arguments
-    if (argc < 3)
+    if (argc < 2)
     {
-        fprintf(stderr, "Usage: ./partition [graphfile] badj\n");
+        fprintf(stderr, "Usage: ./partition [BADJ file]\n");
         return 1;
     }
     
-    // Verify BADJ format
-    char format;
-    if (!strcmp(argv[2], "badj"))
-    {
-        format = BADJ;
-    }
-    else
-    {
-        fprintf(stderr, "Unknown format.\n");
-        return 1;
-    }
-
     // Initialize graph
     graph g;
-    if (initialize(&g, argv[1], format))
+    if (initialize(&g, argv[1], BADJ))
     {
         return 1;
     }
@@ -35,6 +23,9 @@ int main(int argc, char *argv[])
 
     // Partition graph
     partition(&g);
+
+    // Destroy graph
+    destroy(&g);
 
     return 0;
 }

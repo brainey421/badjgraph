@@ -1,5 +1,7 @@
 #include "graph.h"
 
+#define MAXCACHE 32
+
 #define FPTYPE float
 
 /* Perform one iteration of PowerIteration. */
@@ -10,6 +12,15 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
     for (i = 0; i < g->n; i++)
     {
         y[i] = 0.0;
+    }
+
+    // Create cache
+    unsigned int cache[NTHREADS][MAXCACHE];
+    FPTYPE cacheupdate[NTHREADS][MAXCACHE];
+    unsigned int cachesize[NTHREADS];
+    for (i = 0; i < NTHREADS; i++)
+    {
+        cachesize[i] = 0;
     }
 
     #pragma omp parallel
@@ -30,16 +41,48 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                 // Compute
                 if (v.deg != 0)
                 {
+                    // Compute update
                     FPTYPE update = alpha * x[i] / v.deg;
+                    
+                    // For each neighbor
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {
-                        unsigned int vadjj = v.adj[j];
+                        // Insert into cache
+                        cache[threadno][cachesize[threadno]] = v.adj[j];
+                        cacheupdate[threadno][cachesize[threadno]] = update;
+                        cachesize[threadno]++;
+
+                        // Flush cache
+                        if (cachesize[threadno] == MAXCACHE)
+                        {
+                            {
+                                unsigned int k;
+                                for (k = 0; k < cachesize[threadno]; k++)
+                                {
+                                    #pragma omp atomic
+                                    y[cache[threadno][k]] += cacheupdate[threadno][k];
+                                }
+                            }
+                            cachesize[threadno] = 0;
+                        }
+                    }
+                }    
+                free(v.adj);
+            }
+
+            // Flush cache
+            if (cachesize[threadno] > 0)
+            {
+                {
+                    unsigned int k;
+                    for (k = 0; k < cachesize[threadno]; k++)
+                    {
                         #pragma omp atomic
-                        y[vadjj] += update;
+                        y[cache[threadno][k]] += cacheupdate[threadno][k];
                     }
                 }
-                free(v.adj);
+                cachesize[threadno] = 0;
             }
 
             // Get next block
@@ -72,15 +115,12 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
 int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y)
 {
     // Initialize x to e/n
-    unsigned int i;
     FPTYPE init = 1.0 / (FPTYPE) g->n;
+    unsigned int i;
     for (i = 0; i < g->n; i++)
     {
         x[i] = init;
     }
-
-    // Initialize number of iterations
-    int iter = 0;
 
     // Get next blocks
     for (i = 0; i < NTHREADS; i++)
@@ -89,6 +129,7 @@ int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y)
     }
 
     // For each iteration
+    int iter = 0;
     while (iter < maxit)
     {
         // Perform iteration
@@ -122,31 +163,19 @@ int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y)
 }
 
 /* Computes the PageRank vector of a directed graph in
- * BADJBLK format using PowerIteration or UpdateIteration. */
+ * BADJBLK format using PowerIteration. */
 int main(int argc, char *argv[])
 {
     // Check arguments
-    if (argc < 4)
+    if (argc < 3)
     {
-        fprintf(stderr, "Usage: ./pagerank [graphfile] badjblk [maxiter]\n");
+        fprintf(stderr, "Usage: ./pagerank [BADJBLK file] [maxiter]\n");
         return 1;
     }
     
-    // Get graph format
-    char format;
-    if (!strcmp(argv[2], "badjblk"))
-    {
-        format = BADJBLK;
-    }
-    else
-    {
-        fprintf(stderr, "Unknown format.\n");
-        return 1;
-    }
-
     // Initialize graph
     graph g;
-    if (initialize(&g, argv[1], format))
+    if (initialize(&g, argv[1], BADJBLK))
     {
         return 1;
     }
@@ -158,7 +187,7 @@ int main(int argc, char *argv[])
     // Set PageRank parameters
     FPTYPE alpha = 0.85;
     FPTYPE tol = 1e-8;
-    int maxit = atoi(argv[3]);
+    int maxit = atoi(argv[2]);
 
     // Initialize PageRank vectors
     FPTYPE *x = malloc(g.n * sizeof(FPTYPE));
@@ -178,6 +207,9 @@ int main(int argc, char *argv[])
     // Destroy vectors
     free(x);
     free(y);
+
+    // Destroy graph
+    destroy(&g);
 
     return 0;
 }
