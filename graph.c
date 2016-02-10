@@ -43,13 +43,15 @@ int initialize(graph *g, char *filename, char format)
     {
         // Get number of blocks
         fread(&g->nblks, sizeof(unsigned long long), 1, g->stream);
-        
+
         // Get indices and first nodes
         g->indices = malloc(g->nblks * sizeof(unsigned long long));
         fread(g->indices, sizeof(unsigned long long), g->nblks, g->stream);
         g->firstnodes = malloc(g->nblks * sizeof(unsigned int));
         fread(g->firstnodes, sizeof(unsigned int), g->nblks, g->stream);
         
+        fprintf(stderr, "%d, %d, %d\n", g->nblks, g->indices[0], g->firstnodes[0]);
+
         // Initialize blocks
         unsigned int i;
         for (i = 0; i < NTHREADS; i++)
@@ -258,8 +260,11 @@ int nextblock(graph *g, unsigned int threadno)
         g->currblockno[threadno] = threadno + 1;
     }
 
+    fprintf(stderr, "Initial file position: %d\n", ftello(g->currblock[threadno]));
+    fprintf(stderr, "blockno = %d, index = %d\n", g->currblockno[threadno], g->indices[g->currblockno[threadno]-1]);
     // Set block file pointer
     fseeko(g->currblock[threadno], g->indices[g->currblockno[threadno]-1], SEEK_SET);
+    fprintf(stderr, "New file position: %d\n", ftello(g->currblock[threadno]));
 
     // Set current node
     g->currnode[threadno] = g->firstnodes[g->currblockno[threadno]-1];
@@ -278,7 +283,9 @@ unsigned int nextnode(graph *g, node *v, unsigned int threadno)
     }
 
     // Read next degree
+    fprintf(stderr, "File position 1: %d\n", ftello(g->currblock[threadno]));
     fread(&v->deg, sizeof(unsigned int), 1, g->currblock[threadno]);
+    fprintf(stderr, "File position 2: %d\n", ftello(g->currblock[threadno]));
 
     // If there is another node
     if (v->deg != (unsigned int) -1)

@@ -1,5 +1,5 @@
 LDFLAGS += -fopenmp
-CFLAGS += -O3 -Wall -D_FILE_OFFSET_BITS="64" -D_LARGEFILE64_SOURCE
+CFLAGS += -O3 -Wall -Wno-unused-result -D_FILE_OFFSET_BITS="64" -D_LARGEFILE64_SOURCE
 
 all: pagerank components partition
 

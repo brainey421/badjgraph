@@ -1,6 +1,6 @@
 #include "graph.h"
 
-#define MAXCACHE 32
+#define MAXCACHE 8
 
 #define FPTYPE float
 
@@ -47,6 +47,7 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                     
                     // For each neighbor
                     unsigned int j;
+                    fprintf(stderr, "Degree: %d\n", v.deg);
                     for (j = 0; j < v.deg; j++)
                     {
                         // Insert into cache
@@ -68,7 +69,7 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                             cachesize[threadno] = 0;
                         }
                     }
-                }    
+                }
                 free(v.adj);
             }
 
