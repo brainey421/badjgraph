@@ -41,6 +41,7 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                 // Compute
                 if (v.deg != 0)
                 {
+                    fprintf(stderr, "Degree: %d\n", v.deg);
                     // Compute update
                     FPTYPE update = alpha * x[i] / v.deg;
                     
