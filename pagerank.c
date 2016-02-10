@@ -41,13 +41,11 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                 // Compute
                 if (v.deg != 0)
                 {
-                    fprintf(stderr, "Degree: %d\n", v.deg);
                     // Compute update
                     FPTYPE update = alpha * x[i] / v.deg;
                     
                     // For each neighbor
                     unsigned int j;
-                    fprintf(stderr, "Degree: %d\n", v.deg);
                     for (j = 0; j < v.deg; j++)
                     {
                         // Insert into cache
