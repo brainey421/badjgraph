@@ -35,7 +35,7 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {
-                        #pragma omp atomic
+                        // #pragma omp atomic
                         y[v.adj[j]] += update;
                     }
                 }

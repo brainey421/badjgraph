@@ -1,9 +1,9 @@
 # BADJGraph
 
-A C implementation of computations on graphs in BADJ (binary adjacency list) format. 
-Includes tools to stream graphs from disk, 
+BADJGraph is a C implementation of computations on graphs in BADJ (binary adjacency list) format. 
+It includes tools to stream graphs from disk, 
 perform the power iteration algorithm to compute PageRank, 
-and the label propagation algorithm to identify connected components.
+and perform the label propagation algorithm to identify connected components.
 
 ## Example Usage
 
@@ -25,15 +25,11 @@ There are sample BADJ files in the data directory.
 ## BADJBLK Format
 
 BADJBLK stands for "BADJ block." 
-BADJBLK format is similar to BADJ format, but it includes metadeta that effectively splits the graph into blocks. 
-By default, the size of each block is 16MB, but this can be modified with the BLOCKLEN macro in "graph.h."
-The "partition" program converts a BADJ graph to BADJBLK format:
+A graph in BADJBLK format includes metadeta that effectively splits a BADJ graph into blocks of size BLOCKLEN (graph.h).
+Partitioning a BADJ graph into a BADJBLK graph allows multithreaded computations that divide the blocks among NTHREADS (graph.h) threads. 
 
         $ ./partition
         Usage: ./partition [BADJ graph]
-
-Partitioning a BADJ graph into BADJBLK format allows parallelized computation in which each thread performs computation on certain blocks in the graph. 
-By default, the number of threads is 8, but this can be modified with the NTHREADS macro in "graph.h."
 
 ## Streaming BADJBLK Graphs
 
@@ -66,8 +62,7 @@ Here is an example of how to stream a BADJBLK graph from disk when NTHREADS is 1
 
 ## Computing PageRank
 
-By default, this power iteration implementation uses alpha = 0.85 and iterates until achieving a residual norm of 1e-8. 
-These parameters can be changed in "pagerank.c."
+By default, this implementation uses alpha = 0.85 and iterates until achieving a residual norm of 1e-8 (pagerank.c). 
 
 		 $ ./pagerank
 		Usage: ./pagerank [BADJBLK graph] [maxiter]
