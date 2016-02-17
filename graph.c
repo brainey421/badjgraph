@@ -109,7 +109,7 @@ int partition(graph *g)
    
     // Initialize block
     unsigned int *block = malloc(BLOCKLEN);
-    
+
     // For each block
     while (1)
     {
@@ -157,7 +157,6 @@ int partition(graph *g)
             }
         }
     }
-    fprintf(stderr, "%lu\n", indices[0]);
 
     // Create BADJBLK file
     char filename[FILENAMELEN];
@@ -181,9 +180,8 @@ int partition(graph *g)
     unsigned int i;
     for (i = 0; i < nblks; i++)
     {
-        indices[i] = indices[i] + (1 + nblks)*sizeof(unsigned long long) + (nblks + i)*sizeof(unsigned long);
+        indices[i] = indices[i] + (1 + nblks)*sizeof(unsigned long long) + (nblks + i)*sizeof(unsigned int);
     }
-    fprintf(stderr, "%lu\n", indices[0]);
 
     // Write block indices and first nodes
     fwrite(indices, sizeof(unsigned long long), nblks, out);

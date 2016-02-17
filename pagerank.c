@@ -1,7 +1,5 @@
 #include "graph.h"
 
-#define MAXCACHE 8
-
 #define FPTYPE float
 
 /* Perform one iteration of PowerIteration. */
@@ -12,15 +10,6 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
     for (i = 0; i < g->n; i++)
     {
         y[i] = 0.0;
-    }
-
-    // Create cache
-    unsigned int cache[NTHREADS][MAXCACHE];
-    FPTYPE cacheupdate[NTHREADS][MAXCACHE];
-    unsigned int cachesize[NTHREADS];
-    for (i = 0; i < NTHREADS; i++)
-    {
-        cachesize[i] = 0;
     }
 
     #pragma omp parallel
@@ -38,51 +27,19 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                     break;
                 }
 
-                // Compute
+                // Compute update for neighbors
                 if (v.deg != 0)
                 {
-                    // Compute update
                     FPTYPE update = alpha * x[i] / v.deg;
                     
-                    // For each neighbor
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {
-                        // Insert into cache
-                        cache[threadno][cachesize[threadno]] = v.adj[j];
-                        cacheupdate[threadno][cachesize[threadno]] = update;
-                        cachesize[threadno]++;
-
-                        // Flush cache
-                        if (cachesize[threadno] == MAXCACHE)
-                        {
-                            {
-                                unsigned int k;
-                                for (k = 0; k < cachesize[threadno]; k++)
-                                {
-                                    #pragma omp atomic
-                                    y[cache[threadno][k]] += cacheupdate[threadno][k];
-                                }
-                            }
-                            cachesize[threadno] = 0;
-                        }
+                        #pragma omp atomic
+                        y[v.adj[j]] += update;
                     }
                 }
                 free(v.adj);
-            }
-
-            // Flush cache
-            if (cachesize[threadno] > 0)
-            {
-                {
-                    unsigned int k;
-                    for (k = 0; k < cachesize[threadno]; k++)
-                    {
-                        #pragma omp atomic
-                        y[cache[threadno][k]] += cacheupdate[threadno][k];
-                    }
-                }
-                cachesize[threadno] = 0;
             }
 
             // Get next block

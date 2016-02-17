@@ -7,7 +7,7 @@
 #define FILENAMELEN 1024
 #define BLOCKLEN    16777216
 #define MAXBLKS     1024
-#define NTHREADS    1
+#define NTHREADS    8
 
 #define BADJ        0
 #define BADJBLK     1

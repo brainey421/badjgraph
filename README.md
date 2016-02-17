@@ -1,11 +1,15 @@
-# BADJ PageRank
+# BADJGraph
 
-A C implementation of the power iteration algorithm to compute the PageRank vector for graphs in BADJ format.
+A C implementation of computations on graphs in BADJ (binary adjacency list) format. 
+Includes tools to stream BADJ graphs from disk, 
+perform the power iteration algorithm to compute PageRank, 
+and the label propagation algorithm to identify connected components.
 
 ## Example Usage
 
 		$ make
-		$ ./pagerank data/wb-cs.stanford.badj badj power 1000
+        $ ./partition data/wb-cs.stanford.badj
+		$ ./pagerank data/wb-cs.stanford.badjblk 20
 
 ## BADJ Format
 

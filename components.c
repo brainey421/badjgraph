@@ -37,7 +37,7 @@ int propagate(graph *g, int maxit, unsigned int *x)
                         break;
                     }
 
-                    // Compute
+                    // Update neighbors
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {
