@@ -57,7 +57,7 @@ int propagate(graph *g, int maxit, unsigned int *x)
                     free(v.adj);
                 }
 
-                // Get next block
+                // Get the next block
                 nextblock(g, threadno);
 
                 // Check if iteration is over
