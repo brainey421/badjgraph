@@ -1,15 +1,15 @@
 # BADJGraph
 
 A C implementation of computations on graphs in BADJ (binary adjacency list) format. 
-Includes tools to stream BADJ graphs from disk, 
+Includes tools to stream graphs from disk, 
 perform the power iteration algorithm to compute PageRank, 
 and the label propagation algorithm to identify connected components.
 
 ## Example Usage
 
-		$ make
+        $ make
         $ ./partition data/wb-cs.stanford.badj
-		$ ./pagerank data/wb-cs.stanford.badjblk 20
+        $ ./pagerank data/wb-cs.stanford.badjblk 20
 
 ## BADJ Format
 
@@ -22,44 +22,57 @@ A graph in BADJ format looks like this:
 
 There are sample BADJ files in the data directory.
 
-## Multithreading and Blocks
+## BADJBLK Format
 
-This PageRank implementation uses two concurrent threads: one to read a block of the graph into memory, and another to perform computation on that block. 
-By default, each block is at most 64MB, as defined in graph.h by BLOCKLEN, and a node's adjacency list does not straddle two blocks.
+BADJBLK stands for "BADJ block." 
+BADJBLK format is similar to BADJ format, but it includes metadeta that effectively splits the graph into blocks. 
+By default, the size of each block is 16MB, but this can be modified with the BLOCKLEN macro in "graph.h."
+The "partition" program converts a BADJ graph to BADJBLK format:
 
-This repository includes a program to partition a graph in BADJ format into its blocks explicitly. 
-The resulting graph in BADJBLK format is a directory containing one file for each block. 
-In the future, the PageRank program will support compressed blocks to reduce time spent reading the graph. 
+        $ ./partition
+        Usage: ./partition [BADJ graph]
 
-		$ ./partition
-		Usage: ./partition [graphfile] [badj] [outdirectory]
+Partitioning a BADJ graph into BADJBLK format allows parallelized computation in which each thread performs computation on certain blocks in the graph. 
+By default, the number of threads is 8, but this can be modified with the NTHREADS macro in "graph.h."
 
-## Reading a BADJ File
+## Streaming BADJBLK Graphs
 
-Here is an example of how to read through a graph in BADJ format:
+Here is an example of how to stream a BADJBLK graph from disk when NTHREADS is 1:
 
 		graph g;
-		initialize(&g, "data/wb-cs.stanford.badj", BADJ);
-		unsigned int i, j;
-		node v;
-		for (i = 0; i < g.n; i++) {
-			nextnode(&g, &v, i);
-			printf("Degree: %d, ", v.deg);
-			printf("Adjacent nodes:");
-			for (j = 0; j < v.deg; j++) {
+		initialize(&g, "data/wb-cs.stanford.badj", BADJBLK);
+        nextblock(&g, 0);
+		while (1)
+        {
+            node v;
+			unsigned int i = nextnode(&g, &v);
+            if (i == (unsigned int) -1)
+            {
+                nextblock(&g, 0);
+                if (g->currblockno[0] <= NTHREADS)
+                {
+                    break;
+                }
+            }
+
+			printf("Nodes adjacent to node %d:", i);
+			for (j = 0; j < v.deg; j++)
+            {
 				printf(" %d", v.adj[j]);
 			}
 			printf("\n");
 		}
-
-This repository already includes a program to read through a graph.
-
-		$ ./readedges 
-		Usage: ./readedges [graphfile] [badj|badjblk] [niterations]
+        destroy(&g);
 
 ## Computing PageRank
 
-By default, this power iteration implementation uses alpha = 0.85 and iterates until achieving a residual norm of 1e-8.
+By default, this power iteration implementation uses alpha = 0.85 and iterates until achieving a residual norm of 1e-8. 
+These parameters can be changed in "pagerank.c."
 
 		 $ ./pagerank
-		Usage: ./pagerank [graphfile] [badj|badjblk] [power|update] [maxiter]
+		Usage: ./pagerank [BADJBLK graph] [maxiter]
+
+## Computing Connected Components
+
+        $ ./components
+        Usage: ./components [BADJBLK graph] [maxiter]
