@@ -1,6 +1,6 @@
 # BADJGraph
 
-BADJGraph is a C implementation of computations on graphs in BADJ (binary adjacency list) format. 
+BADJGraph is a C implementation of computations on graphs in BADJ ("binary adjacency list") format. 
 It includes tools to stream graphs from disk, 
 perform the power iteration algorithm to compute PageRank, 
 and perform the label propagation algorithm to identify connected components.
