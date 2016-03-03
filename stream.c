@@ -1,6 +1,6 @@
 #include "graph.h"
 
-/* Stream a BADJBLK graph. */
+/* Streams a BADJBLK graph. */
 int main(int argc, char *argv[])
 {
     // Check arguments

@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     // Check arguments
     if (argc < 3)
     {
-        fprintf(stderr, "Usage: ./components [BADJBLK file] [maxiter]\n");
+        fprintf(stderr, "Usage: ./components [BADJBLK file] [maxiter] [optional out file]\n");
         return 1;
     }
     
@@ -115,12 +115,19 @@ int main(int argc, char *argv[])
     // Perform Label Propagation
     propagate(&g, maxit, x);
 
-    // Test
-    fprintf(stderr, "\n");
-    unsigned int i;
-    for (i = 0; i < 10; i++)
+    // Optionally output x
+    if (argc > 3)
     {
-        fprintf(stderr, "%d: %d\n", i, x[i]);
+        FILE *out = fopen(argv[3], "w");
+        if (out == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+        }
+        else
+        {
+            fwrite(x, sizeof(unsigned int), g.n, out);
+            fclose(out);
+        }
     }
    
     // Destroy label vector

@@ -13,6 +13,7 @@ components: components.c graph.o
 
 graph.o: graph.c graph.h
 
+
 clean:
 	rm -f graph.o
 	rm -f partition

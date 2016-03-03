@@ -1,6 +1,6 @@
 #include "graph.h"
 
-#define FPTYPE float
+#define FPTYPE double
 
 /* Perform one iteration of PowerIteration. */
 int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     // Check arguments
     if (argc < 3)
     {
-        fprintf(stderr, "Usage: ./pagerank [BADJBLK file] [maxiter]\n");
+        fprintf(stderr, "Usage: ./pagerank [BADJBLK file] [maxiter] [optional out file]\n");
         return 1;
     }
     
@@ -153,12 +153,19 @@ int main(int argc, char *argv[])
     // Perform PowerIteration
     power(&g, alpha, tol, maxit, x, y);
 
-    // Test
-    fprintf(stderr, "\n");
-    unsigned int i;
-    for (i = 0; i < 10; i++)
+    // Optionally output x
+    if (argc > 3)
     {
-        fprintf(stderr, "%d: %e\n", i, x[i]);
+        FILE *out = fopen(argv[3], "w");
+        if (out == NULL)
+        {
+            fprintf(stderr, "Could not open file.\n");
+        }
+        else
+        {
+            fwrite(x, sizeof(FPTYPE), g.n, out);
+            fclose(out);
+        }
     }
    
     // Destroy vectors
