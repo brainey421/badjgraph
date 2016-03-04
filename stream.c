@@ -1,18 +1,18 @@
 #include "graph.h"
 
-/* Streams a BADJBLK graph. */
+/* Streams a BADJ graph. */
 int main(int argc, char *argv[])
 {
     // Check arguments
     if (argc < 2)
     {
-        fprintf(stderr, "Usage: ./stream [BADJBLK file]\n");
+        fprintf(stderr, "Usage: ./stream [BADJ file]\n");
         return 1;
     }
     
     // Initialize graph
     graph g;
-    if (initialize(&g, argv[1], BADJBLK))
+    if (initialize(&g, argv[1], 1))
     {
         return 1;
     }

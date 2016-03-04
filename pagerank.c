@@ -1,6 +1,6 @@
 #include "graph.h"
 
-#define FPTYPE double
+#define FPTYPE float
 
 /* Perform one iteration of PowerIteration. */
 int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
@@ -119,20 +119,20 @@ int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y)
     return 0;
 }
 
-/* Computes the PageRank vector of a directed graph in
- * BADJBLK format using PowerIteration. */
+/* Computes the PageRank vector of a graph in
+ * BADJ format using PowerIteration. */ 
 int main(int argc, char *argv[])
 {
     // Check arguments
     if (argc < 3)
     {
-        fprintf(stderr, "Usage: ./pagerank [BADJBLK file] [maxiter] [optional out file]\n");
+        fprintf(stderr, "Usage: ./pagerank [BADJ file] [maxiter] [optional out file]\n");
         return 1;
     }
     
     // Initialize graph
     graph g;
-    if (initialize(&g, argv[1], BADJBLK))
+    if (initialize(&g, argv[1], 1))
     {
         return 1;
     }
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 
     // Perform PowerIteration
     power(&g, alpha, tol, maxit, x, y);
-
+    
     // Optionally output x
     if (argc > 3)
     {
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
             fclose(out);
         }
     }
-   
+
     // Destroy vectors
     free(x);
     free(y);

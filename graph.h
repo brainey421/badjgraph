@@ -6,18 +6,16 @@
 
 #define FILENAMELEN 1024
 #define BLOCKLEN    16777216
-#define MAXBLKS     1024
-#define NTHREADS    8
+#define MAXBLKS     32768
+#define MAXNODES    4294967296
+#define NTHREADS    1
 
-#define BADJ        0
-#define BADJBLK     1
-
-/* Graph in BADJ/BADJBLK format */
+/* Graph in BADJ format */
 struct graph
 {
     char filename[FILENAMELEN];             // name of graph file
     FILE *stream;                           // pointer to graph file
-    char format;                            // format of graph
+    char badji;                             // whether graph has a badji file
 
     unsigned long long n;                   // number of nodes
     unsigned long long m;                   // number of edges
@@ -40,8 +38,8 @@ struct node
 typedef struct graph graph;
 typedef struct node node;
 
-int initialize(graph *g, char *filename, char format);              // initialize graph
+int initialize(graph *g, char *filename, char badji);               // initialize graph
 int destroy(graph *g);                                              // destroy graph
-int partition(graph *g);                                            // partition a BADJ graph into a BADJBLK graph
+int badjindex(graph *g);                                            // create a badji file for a BADJ graph
 int nextblock(graph *g, unsigned int threadno);                     // get the next block of the graph
 unsigned int nextnode(graph *g, node *v, unsigned int threadno);    // get the next node of the block

@@ -84,20 +84,20 @@ int propagate(graph *g, int maxit, unsigned int *x)
     return 0;
 }
 
-/* Computes the connected components of a graph in BADJBLK 
+/* Computes the connected components of a graph in BADJ 
  * format using Label Propagation. */
 int main(int argc, char *argv[])
 {
     // Check arguments
     if (argc < 3)
     {
-        fprintf(stderr, "Usage: ./components [BADJBLK file] [maxiter] [optional out file]\n");
+        fprintf(stderr, "Usage: ./components [BADJ file] [maxiter] [optional out file]\n");
         return 1;
     }
     
     // Initialize graph
     graph g;
-    if (initialize(&g, argv[1], BADJBLK))
+    if (initialize(&g, argv[1], 1))
     {
         return 1;
     }
