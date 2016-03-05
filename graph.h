@@ -8,7 +8,7 @@
 #define BLOCKLEN    16777216
 #define MAXBLKS     32768
 #define MAXNODES    4294967296
-#define NTHREADS    1
+#define NTHREADS    8
 
 /* Graph in BADJ format */
 struct graph
