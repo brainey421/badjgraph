@@ -1,32 +1,18 @@
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <sys/mman.h>
 #include "graph.h"
 
 #define FPTYPE float
 
-/* Floating-point array or file pointer */
-union prvector
-{
-    FPTYPE *array;
-    FILE *file;
-};
-
-typedef union prvector prvector;
-
 /* Perform one iteration of PowerIteration. */
-int poweriterate(graph *g, FPTYPE alpha, prvector x, prvector y, char ooc)
+int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
 {
     // Initialize y to 0
-    FPTYPE init = 0.0;
     unsigned int i;
     for (i = 0; i < g->n; i++)
     {
-        if (!ooc)
-        {
-            y.array[i] = init;
-        }
-        else
-        {
-            fwrite(&init, sizeof(FPTYPE), 1, y.file);
-        }
+        y[i] = 0.0;
     }
 
     #pragma omp parallel
@@ -47,34 +33,13 @@ int poweriterate(graph *g, FPTYPE alpha, prvector x, prvector y, char ooc)
                 // Compute update for neighbors
                 if (v.deg != 0)
                 {
-                    if (!ooc)
-                    {
-                        FPTYPE update = alpha * x.array[i] / v.deg;
-
-                        unsigned int j;                    
-                        for (j = 0; j < v.deg; j++)
-                        {
-                            #pragma omp atomic
-                            y.array[v.adj[j]] += update;
-                        }
-                    }
-                    else
-                    {
-                        FPTYPE xval;
-                        fseeko(x.file, sizeof(FPTYPE) * i, SEEK_SET);
-                        fread(&xval, sizeof(FPTYPE), 1, x.file);
-                        FPTYPE update = alpha * xval / v.deg;
+                    FPTYPE update = alpha * x[i] / v.deg;
                         
-                        unsigned int j;
-                        for (j = 0; j < v.deg; j++)
-                        {
-                            FPTYPE yval;
-                            fseeko(y.file, sizeof(FPTYPE) * v.adj[j], SEEK_SET);
-                            fread(&yval, sizeof(FPTYPE), 1, y.file);
-                            yval += update;
-                            fseeko(y.file, -sizeof(FPTYPE), SEEK_CUR);
-                            fwrite(&yval, sizeof(FPTYPE), 1, y.file);
-                        }
+                    unsigned int j;                    
+                    for (j = 0; j < v.deg; j++)
+                    {
+                        #pragma omp atomic
+                        y[v.adj[j]] += update;
                     }
                 }
                 free(v.adj);
@@ -93,63 +58,28 @@ int poweriterate(graph *g, FPTYPE alpha, prvector x, prvector y, char ooc)
 
     // Distribute remaining weight among the nodes
     FPTYPE remainder = 1.0;
-    if (ooc)
-    {
-        fseeko(y.file, 0, SEEK_SET);
-    }
     for (i = 0; i < g->n; i++)
     {
-        if (!ooc)
-        {
-            remainder -= y.array[i];
-        }
-        else
-        {
-            FPTYPE yval;
-            fread(&yval, sizeof(FPTYPE), 1, y.file);
-            remainder -= yval;
-        }
+        remainder -= y[i];
     }
     remainder /= (FPTYPE) g->n;
-    if (ooc)
-    {
-        fseeko(y.file, 0, SEEK_SET);
-    }
     for (i = 0; i < g->n; i++)
     {
-        if (!ooc)
-        {
-            y.array[i] += remainder;
-        }
-        else
-        {
-            FPTYPE yval;
-            fread(&yval, sizeof(FPTYPE), 1, y.file);
-            yval += remainder;
-            fseeko(y.file, -sizeof(FPTYPE), SEEK_CUR);
-            fwrite(&yval, sizeof(FPTYPE), 1, y.file);
-        }
+        y[i] += remainder;
     }
     
     return 0;
 }
 
 /* Perform PowerIteration. */
-int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, prvector x, prvector y, char ooc)
+int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y)
 {
     // Initialize x to e/n
     FPTYPE init = 1.0 / (FPTYPE) g->n;
     unsigned int i;
     for (i = 0; i < g->n; i++)
     {
-        if (!ooc)
-        {
-            x.array[i] = init;
-        }
-        else
-        {
-            fwrite(&init, sizeof(FPTYPE), 1, x.file);
-        }
+        x[i] = init;
     }
 
     // Get next blocks
@@ -163,52 +93,23 @@ int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, prvector x, prvector y,
     while (iter < maxit)
     {
         // Perform iteration
-        poweriterate(g, alpha, x, y, ooc);
+        poweriterate(g, alpha, x, y);
         iter++;
         
         // Compute residual norm
         FPTYPE norm = 0.0;
-        if (ooc)
-        {
-            fseeko(x.file, 0, SEEK_SET);
-            fseeko(y.file, 0, SEEK_SET);
-        }
         for (i = 0; i < g->n; i++)
         {
-            if (!ooc)
-            {
-                norm += fabs(x.array[i] - y.array[i]);
-            }
-            else
-            {
-                FPTYPE xval;
-                FPTYPE yval;
-                fread(&xval, sizeof(FPTYPE), 1, x.file);
-                fread(&yval, sizeof(FPTYPE), 1, y.file);
-                norm += fabs(xval - yval);
-            }
+            norm += fabs(x[i] - y[i]);
         }
         
         // Print residual norm
         fprintf(stderr, "%d: %e\n", iter, norm);
         
         // Copy y to x
-        if (!ooc)
+        for (i = 0; i < g->n; i++)
         {
-            for (i = 0; i < g->n; i++)
-            {
-                x.array[i] = y.array[i];
-            }
-        }
-        else
-        {
-            fclose(x.file);
-            fclose(y.file);
-            rename("xfile.tmp", "zfile.tmp");
-            rename("yfile.tmp", "xfile.tmp");
-            rename("zfile.tmp", "yfile.tmp");
-            x.file = fopen("xfile.tmp", "r+");
-            y.file = fopen("yfile.tmp", "r+");
+            x[i] = y[i];
         }
 
         // Stop iterating if residual norm is within tolerance
@@ -256,22 +157,26 @@ int main(int argc, char *argv[])
     }
 
     // Initialize PageRank vectors
-    prvector x;
-    prvector y;
+    FILE *xfile, *yfile;
+    FPTYPE *x, *y;
     if (!ooc)
     {
-        x.array = malloc(g.n * sizeof(FPTYPE));
-        y.array = malloc(g.n * sizeof(FPTYPE));
+        x = malloc(g.n * sizeof(FPTYPE));
+        y = malloc(g.n * sizeof(FPTYPE));
     }
     else
     {
-        x.file = fopen("xfile.tmp", "w+");
-        y.file = fopen("yfile.tmp", "w+");
+        xfile = fopen("xfile.tmp", "w+");
+        yfile = fopen("yfile.tmp", "w+");
+        fallocate(fileno(xfile), 0, 0, g.n * sizeof(FPTYPE));
+        fallocate(fileno(yfile), 0, 0, g.n * sizeof(FPTYPE));
+        x = (float *) mmap(NULL, g.n * sizeof(FPTYPE), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(xfile), 0);
+        y = (float *) mmap(NULL, g.n * sizeof(FPTYPE), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(yfile), 0);
     }
 
     // Perform PowerIteration
-    power(&g, alpha, tol, maxit, x, y, ooc);
-    
+    power(&g, alpha, tol, maxit, x, y);
+
     // Optionally output x and destroy PageRank vectors
     if (!ooc)
     {
@@ -284,26 +189,26 @@ int main(int argc, char *argv[])
             }
             else
             {
-                fwrite(x.array, sizeof(FPTYPE), g.n, out);
+                fwrite(x, sizeof(FPTYPE), g.n, out);
                 fclose(out);
             }
         }
-        free(x.array);
-        free(y.array);
+        free(x);
+        free(y);
     }
     else
     {
         if (argc > 3)
         {
             rename("xfile.tmp", argv[3]);
-            fclose(x.file);
+            fclose(xfile);
         }
         else
         {
-            fclose(x.file);
+            fclose(xfile);
             remove("xfile.tmp");
         }
-        fclose(y.file);
+        fclose(yfile);
         remove("yfile.tmp");
     }
 
