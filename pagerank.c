@@ -38,8 +38,10 @@ int poweriterate(graph *g, FPTYPE alpha, FPTYPE *x, FPTYPE *y)
                     unsigned int j;                    
                     for (j = 0; j < v.deg; j++)
                     {
+                        unsigned int vadjj = v.adj[j];
+                        
                         #pragma omp atomic
-                        y[v.adj[j]] += update;
+                        y[vadjj] += update;
                     }
                 }
                 free(v.adj);
@@ -89,7 +91,7 @@ int power(graph *g, FPTYPE alpha, FPTYPE tol, int maxit, FPTYPE *x, FPTYPE *y)
     }
 
     // For each iteration
-    int iter = 0;
+    unsigned int iter = 0;
     while (iter < maxit)
     {
         // Perform iteration
@@ -170,8 +172,8 @@ int main(int argc, char *argv[])
         yfile = fopen("yfile.tmp", "w+");
         fallocate(fileno(xfile), 0, 0, g.n * sizeof(FPTYPE));
         fallocate(fileno(yfile), 0, 0, g.n * sizeof(FPTYPE));
-        x = (float *) mmap(NULL, g.n * sizeof(FPTYPE), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(xfile), 0);
-        y = (float *) mmap(NULL, g.n * sizeof(FPTYPE), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(yfile), 0);
+        x = (FPTYPE *) mmap(NULL, g.n * sizeof(FPTYPE), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(xfile), 0);
+        y = (FPTYPE *) mmap(NULL, g.n * sizeof(FPTYPE), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(yfile), 0);
     }
 
     // Perform PowerIteration

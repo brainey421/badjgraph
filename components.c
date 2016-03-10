@@ -1,3 +1,6 @@
+#define _GNU_SOURCE
+#include <fcntl.h>
+#include <sys/mman.h>
 #include "graph.h"
 
 /* Perform Label Propagation. */
@@ -37,12 +40,12 @@ int propagate(graph *g, int maxit, unsigned int *x)
                         break;
                     }
 
-                    // Update neighbors
+                    // Compute update for neighbors
                     unsigned int j;
                     for (j = 0; j < v.deg; j++)
                     {
-                        // NOT Thread Safe!!
                         unsigned int vadjj = v.adj[j];
+                        
                         if (x[i] < x[vadjj])
                         {
                             x[vadjj] = x[i];
@@ -109,30 +112,62 @@ int main(int argc, char *argv[])
     // Set number of iterations
     int maxit = atoi(argv[2]);
 
-    // Initialize label vector
-    unsigned int *x = malloc(g.n * sizeof(unsigned int));
+    // Determine whether vector is out of core
+    char ooc = 0;
+    if (g.n > 134217728)
+    {
+        ooc = 1;
+    }
 
+    // Initialize label vector
+    FILE *xfile;
+    unsigned int *x;
+    if (!ooc)
+    {
+        x = malloc(g.n * sizeof(unsigned int));
+    }
+    else
+    {
+        xfile = fopen("xfile.tmp", "w+");
+        fallocate(fileno(xfile), 0, 0, g.n * sizeof(unsigned int));
+        x = (unsigned int *) mmap(NULL, g.n * sizeof(unsigned int), PROT_READ|PROT_WRITE, MAP_SHARED, fileno(xfile), 0);
+    }
+    
     // Perform Label Propagation
     propagate(&g, maxit, x);
 
-    // Optionally output x
-    if (argc > 3)
+    // Optionally output x and destroy label vector
+    if (!ooc)
     {
-        FILE *out = fopen(argv[3], "w");
-        if (out == NULL)
+        if (argc > 3)
         {
-            fprintf(stderr, "Could not open file.\n");
+            FILE *out = fopen(argv[3], "w");
+            if (out == NULL)
+            {
+                fprintf(stderr, "Could not open output file.\n");
+            }
+            else
+            {
+                fwrite(x, sizeof(unsigned int), g.n, out);
+                fclose(out);
+            }
+        }
+        free(x);
+    }
+    else
+    {
+        if (argc > 3)
+        {
+            rename("xfile.tmp", argv[3]);
+            fclose(xfile);
         }
         else
         {
-            fwrite(x, sizeof(unsigned int), g.n, out);
-            fclose(out);
+            fclose(xfile);
+            remove("xfile.tmp");
         }
     }
    
-    // Destroy label vector
-    free(x);
-
     // Destroy graph
     destroy(&g);
 
