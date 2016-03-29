@@ -111,6 +111,88 @@ int destroy(graph *g)
     return 0;
 }
 
+/* Transpose a BADJ graph. */
+int transpose(graph *g, char *filename)
+{
+    // Allocate space for degrees in transpose
+    unsigned int *degt = malloc(sizeof(unsigned int) * g->n);
+    unsigned int *currdegt = malloc(sizeof(unsigned int) * g->n);
+    unsigned int i;
+    for (i = 0; i < g->n; i++)
+    {
+        degt[i] = 0;
+        currdegt[i] = 0;
+    }
+
+    // For each node
+    unsigned int deg;
+    unsigned int *adj;
+    for (i = 0; i < g->n; i++)
+    {
+        // Read adjacency list
+        fread(&deg, sizeof(unsigned int), 1, g->stream);
+        adj = malloc(sizeof(unsigned int) * deg);
+        fread(adj, sizeof(unsigned int), deg, g->stream);
+
+        // Increment degrees in transpose
+        unsigned int j;
+        for (j = 0; j < deg; j++)
+        {
+            degt[adj[j]]++;
+        }
+        free(adj);
+    }
+
+    // Allocate space for adjacency list in transpose
+    unsigned int **adjt = malloc(sizeof(unsigned int *) * g->n);
+    for (i = 0; i < g->n; i++)
+    {
+        adjt[i] = malloc(sizeof(unsigned int) * degt[i]);
+    }
+
+    // Rewind graph
+    fseek(g->stream, 2*sizeof(unsigned long long), SEEK_SET);
+
+    // For each node
+    for (i = 0; i < g->n; i++)
+    {
+        // Read adjacency list
+        fread(&deg, sizeof(unsigned int), 1, g->stream);
+        adj = malloc(sizeof(unsigned int) * deg);
+        fread(adj, sizeof(unsigned int), deg, g->stream);
+
+        // Update adjacency list in transpose
+        unsigned int j;
+        for (j = 0; j < deg; j++)
+        {
+            adjt[adj[j]][currdegt[adj[j]]] = i;
+            currdegt[adj[j]]++;
+        }
+        free(adj);
+    }
+
+    // Create BADJ file
+    FILE *out = fopen(filename, "w");
+    fwrite(&g->n, sizeof(unsigned long long), 1, out);
+    fwrite(&g->m, sizeof(unsigned long long), 1, out);
+
+    // For each node
+    for (i = 0; i < g->n; i++)
+    {
+        // Write degree and adjacent nodes in transpose
+        fwrite(&degt[i], sizeof(unsigned int), 1, out);
+        fwrite(adjt[i], sizeof(unsigned int), degt[i], out);
+    }
+
+    // Clean up
+    fclose(out);
+    free(degt);
+    free(currdegt);
+    free(adjt);
+
+    return 0;
+}
+
 /* Create a badji file for a BADJ graph. */
 int badjindex(graph *g)
 { 

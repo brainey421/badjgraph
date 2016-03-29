@@ -40,6 +40,7 @@ typedef struct node node;
 
 int initialize(graph *g, char *filename, char badji);               // initialize graph
 int destroy(graph *g);                                              // destroy graph
+int transpose(graph *g, char *filename);                            // transpose graph
 int badjindex(graph *g);                                            // create a badji file for a BADJ graph
 int nextblock(graph *g, unsigned int threadno);                     // get the next block of the graph
 unsigned int nextnode(graph *g, node *v, unsigned int threadno);    // get the next node of the block
