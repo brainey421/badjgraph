@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
     
     // Initialize graph
     graph g;
-    if (initialize(&g, argv[1], 1))
+    if (initialize(&g, argv[1], 0))
     {
         return 1;
     }
