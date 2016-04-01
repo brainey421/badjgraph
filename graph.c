@@ -193,6 +193,48 @@ int transpose(graph *g, char *filename)
     return 0;
 }
 
+/* Compute the locality of a BADJ graph. */
+int locality(graph *g, unsigned int window, double *loc)
+{
+    // Initialize number of local references
+    unsigned int refs = 0;
+
+    // Initialize previous node
+    unsigned int prev = ((unsigned int) - 1) / 2;
+
+    // For each node
+    unsigned int deg;
+    unsigned int *adj;
+    unsigned int i;
+    for (i = 0; i < g->n; i++)
+    {
+        // Read adjacency list
+        fread(&deg, sizeof(unsigned int), 1, g->stream);
+        adj = malloc(sizeof(unsigned int) * deg);
+        fread(adj, sizeof(unsigned int), deg, g->stream);
+
+        // For each neighbor
+        unsigned int j;
+        for (j = 0; j < deg; j++)
+        {
+            // Increment number of local reference if node is within window
+            if (abs(adj[j] - prev) < window)
+            {
+                refs++;
+            }
+            
+            // Update previous node
+            prev = adj[j];
+        }
+        free(adj);
+    }
+
+    // Find percentage of local references
+    *loc = (double) refs / (double) (g->m - 1);
+
+    return 0;
+}
+
 /* Create a badji file for a BADJ graph. */
 int badjindex(graph *g)
 { 
